@@ -1,0 +1,39 @@
+/* DNA Tutory 2.0: Abyss, Deep, Electric, Beam, Ice. Gold só em momentos de conquista. */
+@font-face { font-family: 'Gilroy'; src: url('../assets/fonts/Gilroy-ExtraBold.otf') format('opentype'); font-weight: 800; font-display: swap; }
+@font-face { font-family: 'Gilroy'; src: url('../assets/fonts/Gilroy-Light.otf') format('opentype'); font-weight: 300; font-display: swap; }
+@font-face { font-family: 'Manrope'; src: url('../assets/fonts/Manrope-VariableFont_wght.ttf') format('truetype'); font-weight: 200 800; font-display: swap; }
+
+:root {
+  --abyss: #020308;
+  --night: #060a14;
+  --deep: #0a1a3a;
+  --electric: #0040c8;
+  --beam: #3b7bf5;
+  --beam-soft: #7ea6f8;
+  --ice: #d0ddef;
+  --white: #f5f8fe;
+  --gold: #c9a96e;
+  --gold-soft: #e7d3a8;
+  --danger: #ff6b6b;
+  --ok: #54d1a0;
+  --warn: #f2c14e;
+
+  --text: #e8eef9;
+  --muted: #94a3bd;
+  --faint: #6a7a96;
+  --line: rgba(208, 221, 239, 0.12);
+  --line-strong: rgba(208, 221, 239, 0.24);
+  --glass: rgba(16, 24, 42, 0.56);
+  --glass-strong: rgba(18, 28, 50, 0.78);
+  --glass-hi: rgba(208, 221, 239, 0.06);
+
+  --r-sm: 10px;
+  --r: 16px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+  --shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --font-title: 'Gilroy', 'Manrope', system-ui, sans-serif;
+  --font: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --nav-h: 68px;
+}

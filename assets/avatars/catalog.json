@@ -1,0 +1,1521 @@
+{
+ "source": "Ultimate Animated Character Pack - Quaternius (CC0 1.0)",
+ "joints": [
+  "Bone",
+  "Foot.L",
+  "Body",
+  "Hips",
+  "Abdomen",
+  "Torso",
+  "Neck",
+  "Head",
+  "Shoulder.L",
+  "UpperArm.L",
+  "LowerArm.L",
+  "Fist.L",
+  "Shoulder.R",
+  "UpperArm.R",
+  "LowerArm.R",
+  "Fist.R",
+  "UpperLeg.L",
+  "LowerLeg.L",
+  "UpperLeg.R",
+  "LowerLeg.R",
+  "PoleTarget.L",
+  "Foot.R",
+  "PoleTarget.R"
+ ],
+ "outfits": [
+  {
+   "id": "casual",
+   "label": "Casual",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "8cd998fd4a",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "312987ea87",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Camiseta",
+     "part": "6514eb6bbb",
+     "color": "#4a5b77"
+    },
+    {
+     "slot": "Calça",
+     "part": "b9d6cefde7",
+     "color": "#493f35"
+    },
+    {
+     "slot": "Cinto",
+     "part": "aa6a0eb6d4",
+     "color": "#493629"
+    }
+   ]
+  },
+  {
+   "id": "casual2",
+   "label": "Moletom",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "d3fc121611",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "97216e6ba4",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Blusa",
+     "part": "e757e3edd5",
+     "color": "#5e5777"
+    },
+    {
+     "slot": "Calça",
+     "part": "024c4679ad",
+     "color": "#2a2e49"
+    },
+    {
+     "slot": "Cinto",
+     "part": "79e39fd0c4",
+     "color": "#493629"
+    }
+   ]
+  },
+  {
+   "id": "casual3",
+   "label": "Regata",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "aa6433c73f",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "97216e6ba4",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Regata",
+     "part": "7e6f55bd45",
+     "color": "#777673"
+    },
+    {
+     "slot": "Calça",
+     "part": "024c4679ad",
+     "color": "#4b4e2f"
+    },
+    {
+     "slot": "Cinto",
+     "part": "e5dfadae17",
+     "color": "#493629"
+    }
+   ]
+  },
+  {
+   "id": "suit",
+   "label": "Terno",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "bd8174404c",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "972e43505a",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Terno",
+     "part": "7ff78498f2",
+     "color": "#111111"
+    },
+    {
+     "slot": "Camisa",
+     "part": "3b1e319527",
+     "color": "#cecece"
+    },
+    {
+     "slot": "Gravata",
+     "part": "e3eed6d128",
+     "color": "#474747"
+    },
+    {
+     "slot": "Detalhe",
+     "part": "8040b207cc",
+     "color": "#121525"
+    }
+   ]
+  },
+  {
+   "id": "doctor",
+   "label": "Jaleco",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "ac2a13a050",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "312987ea87",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Jaleco",
+     "part": "40e32839b6",
+     "color": "#afafaf"
+    },
+    {
+     "slot": "Camisa",
+     "part": "141caa424d",
+     "color": "#45816f"
+    },
+    {
+     "slot": "Calça",
+     "part": "8b03fcc7a1",
+     "color": "#193133"
+    }
+   ]
+  },
+  {
+   "id": "chef",
+   "label": "Chef",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "5c2103a262",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "5c6c596f98",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Dólmã",
+     "part": "a264fae294",
+     "color": "#c5c5c5"
+    },
+    {
+     "slot": "Calça",
+     "part": "c5df1f0fb2",
+     "color": "#9c9c9c"
+    },
+    {
+     "slot": "Gravata",
+     "part": "26151181a5",
+     "color": "#853528"
+    }
+   ]
+  },
+  {
+   "id": "worker",
+   "label": "Obra",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "effe0f0022",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "312987ea87",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Camiseta",
+     "part": "f1cee5bee8",
+     "color": "#aab2aa"
+    },
+    {
+     "slot": "Colete",
+     "part": "0d0c9eaf0d",
+     "color": "#795538"
+    },
+    {
+     "slot": "Calça",
+     "part": "59aae009df",
+     "color": "#3d5870"
+    }
+   ]
+  },
+  {
+   "id": "cowboy",
+   "label": "Cowboy",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "c3df81e288",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "312987ea87",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Jaqueta",
+     "part": "4e0ba813c7",
+     "color": "#834720"
+    },
+    {
+     "slot": "Camisa",
+     "part": "3bd8a24f25",
+     "color": "#4e381a"
+    },
+    {
+     "slot": "Lenço",
+     "part": "190523be09",
+     "color": "#831813"
+    },
+    {
+     "slot": "Detalhe",
+     "part": "f614abe17a",
+     "color": "#83593c"
+    },
+    {
+     "slot": "Calça",
+     "part": "1a34089e4d",
+     "color": "#3d2115"
+    }
+   ]
+  },
+  {
+   "id": "soldier",
+   "label": "Tático verde",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "d644648d73",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "972e43505a",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Blusa",
+     "part": "656877a792",
+     "color": "#475539"
+    },
+    {
+     "slot": "Colete",
+     "part": "c8e44b7a17",
+     "color": "#272727"
+    },
+    {
+     "slot": "Calça",
+     "part": "a65ae28a30",
+     "color": "#323a1d"
+    }
+   ]
+  },
+  {
+   "id": "soldier_blue",
+   "label": "Tático azul",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "d644648d73",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "972e43505a",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Blusa",
+     "part": "656877a792",
+     "color": "#2a364b"
+    },
+    {
+     "slot": "Colete",
+     "part": "c8e44b7a17",
+     "color": "#272727"
+    },
+    {
+     "slot": "Calça",
+     "part": "a65ae28a30",
+     "color": "#3a3a3a"
+    }
+   ]
+  },
+  {
+   "id": "kimono",
+   "label": "Kimono",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "5422c5c059",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "5c6c596f98",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Kimono",
+     "part": "1f0d748ca0",
+     "color": "#c5c5c5"
+    },
+    {
+     "slot": "Faixa",
+     "part": "e30d6f1315",
+     "color": "#853528"
+    }
+   ]
+  },
+  {
+   "id": "viking",
+   "label": "Viking",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "779d8476d9",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "41615070ac",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Túnica",
+     "part": "5b96513806",
+     "color": "#442e29"
+    },
+    {
+     "slot": "Detalhe",
+     "part": "b969d6286f",
+     "color": "#c2ab91"
+    },
+    {
+     "slot": "Calça",
+     "part": "fb40af1cd4",
+     "color": "#2c1f19"
+    }
+   ]
+  },
+  {
+   "id": "pirate",
+   "label": "Pirata",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "30e2b730b7",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "5b02d1df3d",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Casaco",
+     "part": "74a584db29",
+     "color": "#1f263b"
+    },
+    {
+     "slot": "Camisa",
+     "part": "8064df39fa",
+     "color": "#b9b29d"
+    },
+    {
+     "slot": "Dourado",
+     "part": "a4144e6733",
+     "color": "#9e7733"
+    },
+    {
+     "slot": "Cinto",
+     "part": "bf275e659a",
+     "color": "#583c28"
+    }
+   ]
+  },
+  {
+   "id": "classy",
+   "label": "Clássico",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "6294021871",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "65c824e7da",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Camisa",
+     "part": "1f5bc45b27",
+     "color": "#d1d1d1"
+    },
+    {
+     "slot": "Calça",
+     "part": "ae153f4f8a",
+     "color": "#7e7d5e"
+    },
+    {
+     "slot": "Suspensório",
+     "part": "dfd9282bff",
+     "color": "#8f5c36"
+    },
+    {
+     "slot": "Cinto",
+     "part": "601373324a",
+     "color": "#52341f"
+    }
+   ]
+  },
+  {
+   "id": "wizard",
+   "label": "Mago",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "86889c510d",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "312987ea87",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Túnica",
+     "part": "c9b8524280",
+     "color": "#27425d"
+    },
+    {
+     "slot": "Cinto",
+     "part": "370da26f49",
+     "color": "#3b230f"
+    },
+    {
+     "slot": "Barras",
+     "part": "b88cf58c5d",
+     "color": "#926f35"
+    }
+   ]
+  },
+  {
+   "id": "witch",
+   "label": "Bruxa",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "86889c510d",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "312987ea87",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Túnica",
+     "part": "c9b8524280",
+     "color": "#262849"
+    },
+    {
+     "slot": "Cinto",
+     "part": "370da26f49",
+     "color": "#3b230f"
+    },
+    {
+     "slot": "Barras",
+     "part": "b88cf58c5d",
+     "color": "#150924"
+    }
+   ]
+  },
+  {
+   "id": "elf",
+   "label": "Elfo",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "86889c510d",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "312987ea87",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Túnica",
+     "part": "c9b8524280",
+     "color": "#345d28"
+    },
+    {
+     "slot": "Cinto",
+     "part": "370da26f49",
+     "color": "#3b230f"
+    },
+    {
+     "slot": "Barras",
+     "part": "b88cf58c5d",
+     "color": "#926f35"
+    }
+   ]
+  },
+  {
+   "id": "ninja",
+   "label": "Ninja",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "52a6a805c7",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "5d4f5950f6",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Traje",
+     "part": "bb38b59ce1",
+     "color": "#161616"
+    },
+    {
+     "slot": "Faixa",
+     "part": "793d787098",
+     "color": "#441942"
+    },
+    {
+     "slot": "Amarras",
+     "part": "030cdfa79a",
+     "color": "#4b4b4b"
+    }
+   ]
+  },
+  {
+   "id": "ninja_sand",
+   "label": "Ninja areia",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "52a6a805c7",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "5d4f5950f6",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Traje",
+     "part": "bb38b59ce1",
+     "color": "#7c704b"
+    },
+    {
+     "slot": "Faixa",
+     "part": "793d787098",
+     "color": "#440a37"
+    },
+    {
+     "slot": "Amarras",
+     "part": "030cdfa79a",
+     "color": "#997f4c"
+    }
+   ]
+  },
+  {
+   "id": "knight",
+   "label": "Cavaleiro",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "c93f4af2d6",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "5c6c596f98",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Armadura",
+     "part": "10f269e76f",
+     "color": "#4b4b4b"
+    },
+    {
+     "slot": "Malha",
+     "part": "d64edfef0c",
+     "color": "#303030"
+    },
+    {
+     "slot": "Detalhe",
+     "part": "588acdf7bb",
+     "color": "#532f1a"
+    }
+   ]
+  },
+  {
+   "id": "knight_gold",
+   "label": "Cavaleiro dourado",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "4a2ae0d903",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "shoes",
+     "part": "5c6c596f98",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Armadura",
+     "part": "19f816f5b8",
+     "color": "#8b7c2f"
+    },
+    {
+     "slot": "Malha",
+     "part": "d64edfef0c",
+     "color": "#252525"
+    },
+    {
+     "slot": "Detalhe",
+     "part": "588acdf7bb",
+     "color": "#5a1c2a"
+    }
+   ]
+  },
+  {
+   "id": "goblin",
+   "label": "Goblin",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "ae360c82f1",
+     "color": "#595d2b"
+    },
+    {
+     "slot": "shoes",
+     "part": "312987ea87",
+     "color": "#595d2b"
+    },
+    {
+     "slot": "Camiseta",
+     "part": "c2a76a02ae",
+     "color": "#8b8476"
+    },
+    {
+     "slot": "Bermuda",
+     "part": "9e81adabdf",
+     "color": "#5d4f31"
+    }
+   ]
+  },
+  {
+   "id": "goblin_bare",
+   "label": "Goblin sem camisa",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "0af57259ad",
+     "color": "#595d2b"
+    },
+    {
+     "slot": "shoes",
+     "part": "312987ea87",
+     "color": "#595d2b"
+    },
+    {
+     "slot": "Bermuda",
+     "part": "9e81adabdf",
+     "color": "#5d4f31"
+    }
+   ]
+  },
+  {
+   "id": "zombie",
+   "label": "Zumbi",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "f904cecdea",
+     "color": "#3a4e34"
+    },
+    {
+     "slot": "shoes",
+     "part": "7c5c4339e3",
+     "color": "#3a4e34"
+    },
+    {
+     "slot": "Camiseta",
+     "part": "3e80ad4ba2",
+     "color": "#53447c"
+    },
+    {
+     "slot": "Bermuda",
+     "part": "a6af2e8f44",
+     "color": "#9c9372"
+    },
+    {
+     "slot": "Detalhe",
+     "part": "5244659004",
+     "color": "#3a3057"
+    },
+    {
+     "slot": "Vísceras",
+     "part": "f074061c59",
+     "color": "#85330d"
+    },
+    {
+     "slot": "Ossos",
+     "part": "31490ab834",
+     "color": "#9e957f"
+    }
+   ]
+  }
+ ],
+ "heads": [
+  {
+   "id": "human",
+   "label": "Humana",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "a0b3dd6623",
+     "color": "#1f1f1f"
+    }
+   ]
+  },
+  {
+   "id": "goblin",
+   "label": "Goblin",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "ad75125678",
+     "color": "#595d2b"
+    }
+   ],
+   "extras": [
+    "fangs"
+   ]
+  },
+  {
+   "id": "zombie",
+   "label": "Zumbi",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "9023266fe8",
+     "color": "#3a4e34"
+    }
+   ]
+  },
+  {
+   "id": "zombie_brain",
+   "label": "Zumbi com cérebro",
+   "noHair": true,
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "6116a7c713",
+     "color": "#3a4e34"
+    },
+    {
+     "slot": "Sangue",
+     "part": "07e37a9bab",
+     "color": "#85330d"
+    },
+    {
+     "slot": "Cérebro",
+     "part": "ddeaa36d64",
+     "color": "#a77382"
+    }
+   ]
+  },
+  {
+   "id": "knight",
+   "label": "Elmo de cavaleiro",
+   "noHair": true,
+   "noFace": true,
+   "noHat": true,
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "8e61707825",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Elmo",
+     "part": "487a5b7531",
+     "color": "#4b4b4b"
+    },
+    {
+     "slot": "Viseira",
+     "part": "ee905eaa2f",
+     "color": "#303030"
+    },
+    {
+     "slot": "Pluma",
+     "part": "661ef27d66",
+     "color": "#64201b"
+    }
+   ]
+  },
+  {
+   "id": "knight_gold",
+   "label": "Elmo dourado",
+   "noHair": true,
+   "noFace": true,
+   "noHat": true,
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "6fbd9df359",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Elmo",
+     "part": "487a5b7531",
+     "color": "#8b7c2f"
+    },
+    {
+     "slot": "Viseira",
+     "part": "eaac44457c",
+     "color": "#252525"
+    },
+    {
+     "slot": "Chifres",
+     "part": "8a2d13c3b4",
+     "color": "#64201b"
+    }
+   ]
+  },
+  {
+   "id": "ninja",
+   "label": "Capuz ninja",
+   "noHair": true,
+   "noHat": true,
+   "lockFace": "ninja",
+   "parts": [
+    {
+     "slot": "Capuz",
+     "part": "5568bfb6df",
+     "color": "#161616"
+    }
+   ]
+  },
+  {
+   "id": "ninja_sand",
+   "label": "Capuz de areia",
+   "noHair": true,
+   "noHat": true,
+   "lockFace": "ninja",
+   "parts": [
+    {
+     "slot": "skin",
+     "part": "f2b2a9422f",
+     "color": "#1f1f1f"
+    },
+    {
+     "slot": "Capuz",
+     "part": "0893879316",
+     "color": "#7c704b"
+    }
+   ]
+  },
+  {
+   "id": "cow",
+   "label": "Vaca",
+   "noHair": true,
+   "noHat": true,
+   "lockFace": "cow",
+   "parts": [
+    {
+     "slot": "Manchas",
+     "part": "352fdf0b46",
+     "color": "#303030"
+    },
+    {
+     "slot": "Rosto",
+     "part": "75a7a9ac4c",
+     "color": "#e7e7e7"
+    },
+    {
+     "slot": "Focinho",
+     "part": "95b0a02229",
+     "color": "#e77480"
+    }
+   ]
+  },
+  {
+   "id": "pug",
+   "label": "Pug",
+   "noHair": true,
+   "noHat": true,
+   "lockFace": "pug",
+   "parts": [
+    {
+     "slot": "Pelagem",
+     "part": "a2bfe67b6b",
+     "color": "#e7cc9d"
+    },
+    {
+     "slot": "Focinho",
+     "part": "9117e21f45",
+     "color": "#381f18"
+    }
+   ]
+  }
+ ],
+ "faces": [
+  {
+   "id": "classic",
+   "label": "Clássico",
+   "parts": [
+    {
+     "slot": "eyes",
+     "part": "04ee8dc7dc",
+     "color": "#fffff8"
+    },
+    {
+     "slot": "brows",
+     "part": "3fe14c854c",
+     "color": "#fffff8"
+    }
+   ]
+  },
+  {
+   "id": "lashes",
+   "label": "Traço longo",
+   "parts": [
+    {
+     "slot": "eyes",
+     "part": "253225a976",
+     "color": "#fffff8"
+    },
+    {
+     "slot": "brows",
+     "part": "ae7ad11b41",
+     "color": "#fffff8"
+    }
+   ]
+  },
+  {
+   "id": "chef",
+   "label": "Sereno",
+   "parts": [
+    {
+     "slot": "eyes",
+     "part": "78c43e4d0e",
+     "color": "#fffff8"
+    },
+    {
+     "slot": "brows",
+     "part": "d85fb018aa",
+     "color": "#fffff8"
+    }
+   ]
+  },
+  {
+   "id": "doctor",
+   "label": "Atento",
+   "parts": [
+    {
+     "slot": "eyes",
+     "part": "adbd8e2f7e",
+     "color": "#fffff8"
+    },
+    {
+     "slot": "brows",
+     "part": "ae7ad11b41",
+     "color": "#fffff8"
+    }
+   ]
+  },
+  {
+   "id": "pirate",
+   "label": "Pirata",
+   "parts": [
+    {
+     "slot": "eyes",
+     "part": "5b73ef10cd",
+     "color": "#fffff8"
+    },
+    {
+     "slot": "brows",
+     "part": "3fe14c854c",
+     "color": "#fffff8"
+    }
+   ]
+  },
+  {
+   "id": "dot",
+   "label": "Pontinhos",
+   "parts": [
+    {
+     "slot": "eyes",
+     "part": "253225a976",
+     "color": "#fffff8"
+    }
+   ]
+  },
+  {
+   "id": "ninja",
+   "label": "Ninja",
+   "hidden": true,
+   "parts": [
+    {
+     "slot": "eyes",
+     "part": "a38183171f",
+     "color": "#fffff8"
+    }
+   ]
+  },
+  {
+   "id": "cow",
+   "label": "Vaca",
+   "hidden": true,
+   "parts": [
+    {
+     "slot": "eyes",
+     "part": "6863a7a6e5",
+     "color": "#1f1f1e"
+    },
+    {
+     "slot": "brows",
+     "part": "f952847985",
+     "color": "#1f1f1e"
+    }
+   ]
+  },
+  {
+   "id": "pug",
+   "label": "Pug",
+   "hidden": true,
+   "parts": [
+    {
+     "slot": "eyes",
+     "part": "42098f5b20",
+     "color": "#242423"
+    }
+   ]
+  }
+ ],
+ "hairs": [
+  {
+   "id": "short",
+   "label": "Curto clássico",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "795915afe1",
+     "color": "#5c3e2a"
+    }
+   ]
+  },
+  {
+   "id": "quiff",
+   "label": "Topete",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "5047bb0687",
+     "color": "#8b7643"
+    }
+   ]
+  },
+  {
+   "id": "waves",
+   "label": "Ondulado",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "4fdb16b9a1",
+     "color": "#49433a"
+    }
+   ]
+  },
+  {
+   "id": "mid",
+   "label": "Médio repartido",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "1aa08a700a",
+     "color": "#5c3e2a"
+    }
+   ]
+  },
+  {
+   "id": "long",
+   "label": "Longo",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "07e5aff5fd",
+     "color": "#7f403d"
+    }
+   ]
+  },
+  {
+   "id": "curly",
+   "label": "Volumoso",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "d6c9916bbf",
+     "color": "#49433a"
+    }
+   ]
+  },
+  {
+   "id": "bob",
+   "label": "Chanel",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "d3ac1e3d60",
+     "color": "#8b886b"
+    }
+   ]
+  },
+  {
+   "id": "chef",
+   "label": "Para trás com bigode",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "f604e2562f",
+     "color": "#9c9c9c"
+    }
+   ]
+  },
+  {
+   "id": "ninja",
+   "label": "Lateral longo",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "2feb2e8930",
+     "color": "#497f79"
+    }
+   ]
+  },
+  {
+   "id": "kimono",
+   "label": "Longo com franja",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "64e3f93f3c",
+     "color": "#88486a"
+    }
+   ]
+  },
+  {
+   "id": "pirate",
+   "label": "Longo ondulado",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "2bcbcf54e8",
+     "color": "#7f6132"
+    }
+   ]
+  },
+  {
+   "id": "knight",
+   "label": "Repicado",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "03ef51932b",
+     "color": "#8b7643"
+    }
+   ]
+  },
+  {
+   "id": "classy",
+   "label": "Grisalho com bigode",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "c682789939",
+     "color": "#9c9c9c"
+    }
+   ]
+  },
+  {
+   "id": "viking",
+   "label": "Moicano com barba",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "bdc0591922",
+     "color": "#6b3521"
+    }
+   ]
+  },
+  {
+   "id": "viking2",
+   "label": "Repartido lateral",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "c266866218",
+     "color": "#6b3521"
+    }
+   ]
+  },
+  {
+   "id": "wizard",
+   "label": "Barba cheia",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "58f794cabd",
+     "color": "#d1d1d1"
+    }
+   ]
+  },
+  {
+   "id": "worker",
+   "label": "Franja lateral",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "46d0237288",
+     "color": "#7f6132"
+    }
+   ]
+  },
+  {
+   "id": "zombie",
+   "label": "Desgrenhado",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "af7c5229e6",
+     "color": "#3b2415"
+    }
+   ]
+  }
+ ],
+ "hats": [
+  {
+   "id": "hardhat",
+   "label": "Capacete de obra",
+   "parts": [
+    {
+     "slot": "Capacete",
+     "part": "a89b449977",
+     "color": "#a39940"
+    }
+   ]
+  },
+  {
+   "id": "cowboy",
+   "label": "Chapéu de cowboy",
+   "parts": [
+    {
+     "slot": "Chapéu",
+     "part": "787c706516",
+     "color": "#83593c"
+    },
+    {
+     "slot": "Aba",
+     "part": "e988df6e4e",
+     "color": "#e7a577"
+    }
+   ]
+  },
+  {
+   "id": "chef",
+   "label": "Chapéu de chef",
+   "parts": [
+    {
+     "slot": "Chapéu",
+     "part": "21ced92c94",
+     "color": "#f5f4e9"
+    }
+   ]
+  },
+  {
+   "id": "tophat",
+   "label": "Cartola",
+   "parts": [
+    {
+     "slot": "Cartola",
+     "part": "f2e86ec34b",
+     "color": "#14140f"
+    }
+   ]
+  },
+  {
+   "id": "wizard",
+   "label": "Chapéu de mago",
+   "parts": [
+    {
+     "slot": "Chapéu",
+     "part": "a84e491ac9",
+     "color": "#13263a"
+    },
+    {
+     "slot": "Faixa",
+     "part": "8ba68abf23",
+     "color": "#3b230f"
+    }
+   ]
+  },
+  {
+   "id": "elf",
+   "label": "Chapéu de elfo",
+   "parts": [
+    {
+     "slot": "Chapéu",
+     "part": "a84e491ac9",
+     "color": "#1d3a26"
+    },
+    {
+     "slot": "Faixa",
+     "part": "8ba68abf23",
+     "color": "#3b230f"
+    }
+   ]
+  },
+  {
+   "id": "witch",
+   "label": "Chapéu de bruxa",
+   "parts": [
+    {
+     "slot": "Chapéu",
+     "part": "374e411e5e",
+     "color": "#1d253a"
+    },
+    {
+     "slot": "Faixa",
+     "part": "961de4cfa1",
+     "color": "#3b230f"
+    }
+   ]
+  },
+  {
+   "id": "pirate",
+   "label": "Chapéu pirata",
+   "parts": [
+    {
+     "slot": "Chapéu",
+     "part": "774447c532",
+     "color": "#202020"
+    },
+    {
+     "slot": "Lenço",
+     "part": "fb9effd740",
+     "color": "#853528"
+    },
+    {
+     "slot": "Dourado",
+     "part": "67d940d36f",
+     "color": "#9e7733"
+    }
+   ]
+  },
+  {
+   "id": "helmet",
+   "label": "Capacete tático",
+   "parts": [
+    {
+     "slot": "Capacete",
+     "part": "51d670b7ca",
+     "color": "#3a4b28"
+    }
+   ]
+  },
+  {
+   "id": "viking",
+   "label": "Elmo viking",
+   "parts": [
+    {
+     "slot": "Elmo",
+     "part": "f6fd35d4b2",
+     "color": "#464646"
+    },
+    {
+     "slot": "Chifres",
+     "part": "5ccd26bc62",
+     "color": "#aca083"
+    }
+   ]
+  },
+  {
+   "id": "headband",
+   "label": "Faixa com nó",
+   "parts": [
+    {
+     "slot": "Faixa",
+     "part": "3b3160da8a",
+     "color": "#853528"
+    }
+   ]
+  },
+  {
+   "id": "headband2",
+   "label": "Faixa fina",
+   "parts": [
+    {
+     "slot": "Faixa",
+     "part": "7bf56591ea",
+     "color": "#853528"
+    }
+   ]
+  }
+ ],
+ "facials": [
+  {
+   "id": "chef",
+   "label": "Bigode de chef",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "83432cd0af",
+     "color": "#fffff8"
+    }
+   ]
+  },
+  {
+   "id": "cowboy",
+   "label": "Bigode cheio",
+   "parts": [
+    {
+     "slot": "hair",
+     "part": "99ae3ee5f9",
+     "color": "#83593c"
+    }
+   ]
+  },
+  {
+   "id": "fangs",
+   "label": "Presas",
+   "parts": [
+    {
+     "slot": "Presas",
+     "part": "58a7d5373f",
+     "color": "#8b8a64"
+    }
+   ]
+  }
+ ]
+}
