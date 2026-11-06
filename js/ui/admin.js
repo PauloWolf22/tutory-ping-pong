@@ -58,6 +58,7 @@ function TvControl({ t }) {
         ${matches.map((m) => html`<option key=${m.id} value=${m.id}>Jogo ${m.number}: ${displayName(playerById(t, m.p[0]))} x ${displayName(playerById(t, m.p[1]))} (${E.STATUS_LABEL[m.status]})</option>`)}
       </select></label>`}
     ${store.mode === 'server' && store.lan.length > 0 && html`<p class="muted hint">Em outra TV ou computador na mesma rede: <b>${url(store.lan[0])}</b></p>`}
+    ${store.mode === 'cloud' && html`<p class="muted hint">Em qualquer TV ou computador: <b>${location.origin}${location.pathname}#/telao</b></p>`}
     ${store.mode === 'local' && html`<p class="notice warn">Sem servidor, o telão só acompanha janelas deste mesmo navegador.</p>`}
   </section>`;
 }
@@ -175,7 +176,7 @@ function Security() {
   return html`<section class="glass card">
     <span class="overline">Segurança</span>
     <h2>Acesso</h2>
-    <p class="muted hint">${store.mode === 'server' ? 'A senha fica protegida no servidor. Participantes usam um código pessoal para o próprio avatar.' : 'Modo local: sem servidor. Veja README para ligar o servidor.'}</p>
+    <p class="muted hint">${store.remote ? 'A senha fica protegida fora do navegador. Participantes usam um código pessoal para o próprio avatar.' : 'Modo local: sem servidor. Veja README para ligar o servidor.'}</p>
     <form class="grid2" onSubmit=${change}>
       <label class="field">Senha atual<input class="input" type="password" autocomplete="current-password" value=${current} onInput=${(e) => setCurrent(e.target.value)} /></label>
       <label class="field">Nova senha<input class="input" type="password" autocomplete="new-password" value=${next} onInput=${(e) => setNext(e.target.value)} /></label>
