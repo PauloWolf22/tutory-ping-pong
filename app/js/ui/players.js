@@ -156,7 +156,7 @@ export function PlayersPage() {
           <div class="player-actions">
             <a class="btn sm" href=${'#/avatar/' + p.id}>Avatar</a>
             ${admin && html`
-              ${store.mode === 'server' && html`<button class="btn sm ghost" onClick=${() => access(p)}>Acesso</button>`}
+              ${store.remote && html`<button class="btn sm ghost" onClick=${() => access(p)}>Acesso</button>`}
               <button class="btn sm ghost" onClick=${() => edit(p)}>Editar</button>
               ${roster && html`<button class="btn sm ghost" onClick=${() => remove(p)} aria-label=${'Excluir ' + p.name}>Excluir</button>`}`}
           </div>

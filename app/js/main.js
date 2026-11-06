@@ -64,7 +64,7 @@ function App() {
     default: screen = html`<${HomePage} />`;
   }
   return html`<${Shell} route=${route}>${screen}<//>
-    ${store.mode === 'server' && !store.online && html`<div class="offline" role="status">Sem conexão com o servidor. Tentando reconectar…</div>`}
+    ${store.remote && !store.online && html`<div class="offline" role="status">Sem conexão. Tentando reconectar…</div>`}
     <${Overlays} />`;
 }
 
@@ -75,5 +75,5 @@ store.init().then(() => {
   render(html`<${App} />`, document.getElementById('app'));
 }).catch((e) => {
   console.error(e);
-  document.getElementById('app').innerHTML = '<div class="boot"><p>Não foi possível abrir o campeonato. Verifique se o servidor está ligado e recarregue a página.</p></div>';
+  document.getElementById('app').innerHTML = '<div class="boot"><p>Não foi possível abrir o campeonato. Verifique a conexão e recarregue a página. Detalhe: ' + (e.message || 'erro desconhecido') + '</p></div>';
 });

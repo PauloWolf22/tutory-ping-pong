@@ -1,46 +1,49 @@
-# Integração com banco de dados (Supabase)
+# Campeonato pela internet com Supabase
 
-**Situação: não implementada e não testada.** O sistema funciona com o servidor local. Este guia descreve o que falta para trocar por Supabase, caso o campeonato precise ficar acessível fora da rede interna.
+Com o Supabase, todos os aparelhos veem o mesmo campeonato em qualquer rede. O app escolhe o modo sozinho ao abrir:
 
-## Ponto de troca
+1. Servidor local respondendo (`start.bat`): usa o servidor.
+2. Sem servidor, com `app/js/config.js` preenchido: usa o Supabase.
+3. Sem nenhum dos dois: modo local, com os dados só naquele aparelho.
 
-Toda a persistência passa pela classe `Store`, em `app/js/core/store.js`. Nenhuma tela fala com a rede diretamente. Basta um terceiro modo que implemente:
+## Preparar o banco
 
-| Método | Responsabilidade |
-|---|---|
-| `init()` | Carrega o documento e assina as mudanças |
-| `update(fn)` | Aplica `fn` em uma cópia e publica |
-| `login(password)`, `logout()`, `setupPassword(password)` | Sessão de administrador |
-| `saveAvatar(id, avatar, code)` | Grava o avatar de um jogador, autorizado pelo código |
-| `playerCode(id)` | Devolve o código pessoal, só para administrador |
+1. Crie um projeto em [supabase.com](https://supabase.com). A região South America (São Paulo) dá a menor latência.
+2. Abra **SQL Editor > New query** e cole `supabase/schema.sql` inteiro.
+3. Na última linha, troque `TROQUE-ESTA-SENHA` pela senha de administrador e clique em **Run**. O resultado esperado é "Pronto: banco preparado e senha definida."
+4. Em **Project Settings > API**, copie a Project URL e a chave `anon`. Preencha `app/js/config.js`.
 
-## Esquema sugerido
+**Nunca use a chave `service_role` no app.** Ela ignora todas as regras de segurança.
+
+Para trocar uma senha esquecida, rode no SQL Editor:
 
 ```sql
-create table tournament (
-  id int primary key default 1 check (id = 1),
-  rev bigint not null default 0,
-  doc jsonb not null,
-  updated_at timestamptz not null default now()
-);
-
-alter table tournament enable row level security;
-
-create policy "leitura publica" on tournament
-  for select using (true);
-
-create policy "escrita do administrador" on tournament
-  for update using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
-
-alter publication supabase_realtime add table tournament;
+select private.set_admin_password('NOVA-SENHA');
 ```
 
-## O que muda em cada parte
+## Como a segurança funciona
 
-- **Sincronização:** trocar o `EventSource` por `supabase.channel(...).on('postgres_changes', ...)`.
-- **Revisão:** gravar com `update ... where rev = $esperado`. Zero linhas afetadas equivale ao 409 de hoje.
-- **Login:** usar Supabase Auth, com um único usuário administrador.
-- **Avatar do participante:** criar uma Edge Function com o segredo do HMAC, equivalente ao `SaveAvatar` de `server/TutoryServer.cs`. O segredo não pode ir para o frontend.
+- A chave `anon` é pública e só lê o campeonato. Gravação direta nas tabelas é negada.
+- Toda escrita passa pelas funções `pp_*`, que conferem a sessão ou o código do jogador.
+- Senha (bcrypt), sessões e segredo dos códigos ficam no schema `private`, fora da API.
+- Sessões usam token aleatório de 256 bits, salvo só como hash, com validade de 16 horas.
+- São 5 erros de senha ou código por endereço, com bloqueio de 30 segundos.
+- A senha é definida pelo script. Por isso, nenhum visitante do link consegue criá-la primeiro.
 
-A chave `anon` do Supabase pode ficar no frontend, porque quem protege os dados é a RLS. A chave `service_role` nunca pode.
+O campeonato é legível por qualquer pessoa com o link, inclusive nomes e apelidos dos participantes. Isso é necessário para o telão funcionar sem login.
+
+## Sincronização
+
+As gravações usam a revisão esperada: se outro administrador salvou antes, a tela recarrega a versão atual e avisa. Os aparelhos recebem o aviso pelo Realtime e, como reforço, conferem a revisão a cada 15 segundos.
+
+## Levar um campeonato do servidor local para a nuvem
+
+No servidor local, use **Painel > Backup completo**. No site publicado, entre como administrador e use **Restaurar backup**.
+
+## Limites do plano gratuito
+
+Projetos sem uso por cerca de 7 dias são pausados, e o site para de carregar até você reativar no painel do Supabase. Abra o projeto nos dias anteriores ao campeonato para confirmar que está ativo.
+
+## Testes
+
+`tests/cloud.test.html` cobre o fluxo do app com um banco simulado (login, conflito, sessão expirada, queda de conexão). Ele não executa o SQL: as regras do banco só são validadas contra um projeto real.

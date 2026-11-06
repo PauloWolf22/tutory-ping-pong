@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Testes Supabase</title>
+<style>body{font:14px/1.5 system-ui;background:#0a0d14;color:#d0ddef;padding:24px}.ok{color:#5fd38d}.ko{color:#ff7b7b;font-weight:700}li{list-style:none}</style></head>
+<body><h1>Fluxo do Store com banco simulado</h1><p>Não substitui o teste com o Supabase real: cobre o app, não o SQL.</p><div id="sum"></div><ul id="out"></ul>
+<script type="module">
+import { store } from '../js/core/store.js';
+import * as E from '../js/core/engine.js';
+import { createCloud } from '../js/core/cloud.js';
+
+const results = { pass: 0, failed: 0, failures: [] };
+const out = document.getElementById('out');
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+async function test(name, fn) {
+  try { await fn(); results.pass++; out.insertAdjacentHTML('beforeend', `<li class="ok">✓ ${name}</li>`); }
+  catch (e) { results.failed++; results.failures.push(name + ': ' + e.message); out.insertAdjacentHTML('beforeend', `<li class="ko">✗ ${name}: ${e.message}</li>`); }
+}
+const eq = (a, b, m = '') => { const x = JSON.stringify(a), y = JSON.stringify(b); if (x !== y) throw new Error(`${m} esperado ${y}, veio ${x}`); };
+const rejects = async (p, re) => { try { await p; } catch (e) { if (re && !re.test(e.message)) throw new Error('mensagem: ' + e.message); return e; } throw new Error('deveria falhar'); };
+
+// Banco simulado com as mesmas regras de supabase/schema.sql
+const db = {
+  rev: 0, doc: null, tokens: new Set(), listener: null, offline: false,
+  guard() { if (this.offline) throw new E.UserError('offline'); },
+  async load() { this.guard(); return { rev: this.rev, doc: this.doc && structuredClone(this.doc) }; },
+  async currentRev() { this.guard(); return this.rev; },
+  listen(fn) { this.listener = fn; },
+  async login(p) { this.guard(); if (p !== 'certa') throw new E.UserError('Senha incorreta.'); const t = 'tok' + Math.random(); this.tokens.add(t); return t; },
+  async session(t) { return this.tokens.has(t); },
+  async logout(t) { this.tokens.delete(t); },
+  async changePassword() { return { ok: true }; },
+  async playerCode(t) { if (!this.tokens.has(t)) throw new E.UserError('Entre como administrador.'); return 'ABC234'; },
+  async saveAvatar(t, id, code, avatar) {
+    if (!this.tokens.has(t) && code !== 'ABC234') throw new E.UserError('Código do jogador incorreto.');
+    this.doc.players.find((x) => x.id === id).avatar = avatar;
+    return ++this.rev;
+  },
+  async save(t, rev, doc) {
+    this.guard();
+    if (!this.tokens.has(t)) throw Object.assign(new E.UserError('Sessão expirada.'), { status: 401 });
+    if (rev !== this.rev) return { httpStatus: 409, rev: this.rev, state: structuredClone(this.doc) };
+    this.doc = structuredClone(doc);
+    return { httpStatus: 200, rev: ++this.rev };
+  },
+  // outro aparelho salvando
+  external(fn) { fn(this.doc); this.rev++; this.listener?.(this.rev); },
+};
+const errors = [];
+store.onError = (e) => errors.push(e.message);
+sessionStorage.clear();
+
+await test('Abre em modo Supabase com banco vazio, sem pedir criação de senha', async () => {
+  await store.init({ cloud: db, pollMs: 80 });
+  eq(store.mode, 'cloud'); eq(store.remote, true); eq(store.hasPassword, true); eq(store.admin, false); eq(store.doc.players, []);
+});
+await test('Visitante não altera nada', async () => {
+  await rejects((async () => store.update((t) => E.addPlayer(t, { name: 'X' })))(), /administrador/);
+  eq(db.doc, null);
+});
+await test('Senha errada recusa; certa entra', async () => {
+  await rejects(store.login('errada'), /incorreta/);
+  eq(store.admin, false);
+  await store.login('certa');
+  eq(store.admin, true);
+});
+await test('Administrador grava no banco e a revisão avança', async () => {
+  store.update((t) => { E.addPlayer(t, { name: 'Ana' }); E.addPlayer(t, { name: 'Bia' }); });
+  await wait(40);
+  eq(db.rev, 1); eq(db.doc.players.length, 2); eq(store.rev, 1);
+});
+await test('Gravações seguidas chegam em ordem, sem conflito', async () => {
+  for (const n of ['C', 'D', 'E', 'F']) store.update((t) => E.addPlayer(t, { name: n }));
+  await wait(60);
+  eq(db.doc.players.length, 6); eq(store.rev, db.rev); eq(errors, []);
+});
+await test('Aviso de outro aparelho atualiza a tela (Realtime)', async () => {
+  db.external((d) => { d.meta.name = 'NOVO NOME'; });
+  await wait(30);
+  eq(store.doc.meta.name, 'NOVO NOME'); eq(store.rev, db.rev);
+});
+await test('Sem o aviso, a checagem periódica atualiza', async () => {
+  db.doc.meta.edition = '2ª edição'; db.rev++;
+  await wait(200);
+  eq(store.doc.meta.edition, '2ª edição');
+});
+await test('Conflito: fica a versão do banco e o usuário é avisado', async () => {
+  const silent = db.listener; db.listener = null;
+  db.doc.meta.name = 'OUTRO ADMIN'; db.rev++;
+  store.update((t) => { t.meta.name = 'ESTE ADMIN'; });
+  await wait(60);
+  db.listener = silent;
+  eq(store.doc.meta.name, 'OUTRO ADMIN'); eq(db.doc.meta.name, 'OUTRO ADMIN');
+  eq(errors.some((m) => /Outro administrador/.test(m)), true);
+  errors.length = 0;
+});
+await test('Código pessoal: errado recusa, certo salva só o avatar', async () => {
+  const id = store.doc.players[0].id;
+  eq(await store.playerCode(id), 'ABC234');
+  await store.logout();
+  eq(store.admin, false);
+  await rejects(store.saveAvatar(id, { outfit: 'pirate' }, 'ZZZZZZ'), /incorreto/);
+  await store.saveAvatar(id, { outfit: 'pirate' }, 'ABC234');
+  eq(db.doc.players[0].avatar.outfit, 'pirate'); eq(store.doc.players[0].avatar.outfit, 'pirate'); eq(store.rev, db.rev);
+});
+await test('Sessão expirada derruba o administrador e restaura o banco', async () => {
+  await store.login('certa');
+  db.tokens.clear();
+  const before = db.doc.meta.name;
+  store.update((t) => { t.meta.name = 'NAO DEVE FICAR'; });
+  await wait(60);
+  eq(store.admin, false); eq(store.doc.meta.name, before); eq(db.doc.meta.name, before);
+  eq(errors.some((m) => /expirada/.test(m)), true);
+  errors.length = 0;
+});
+await test('Sem internet marca desconectado; ao voltar, recarrega', async () => {
+  db.offline = true;
+  await wait(200);
+  eq(store.online, false);
+  db.offline = false;
+  db.doc.meta.edition = '3ª edição'; db.rev++;
+  await wait(200);
+  eq(store.online, true); eq(store.doc.meta.edition, '3ª edição');
+});
+await test('Campeonato completo pelo Store chega ao banco', async () => {
+  await store.login('certa');
+  store.update((t) => { E.startDraw(t); while (t.draw.status === 'live') E.drawNext(t); let m; while ((m = E.nextMatch(t))) E.saveGames(t, m.id, [[11, 5], [11, 7]]); });
+  await wait(60);
+  eq(!!E.champion(db.doc), true); eq(E.champion(store.doc).id, E.champion(db.doc).id);
+});
+await test('A biblioteca real do Supabase carrega e expõe o contrato', async () => {
+  const c = await createCloud({ url: 'https://exemplo.supabase.co', anonKey: 'chave-de-teste' });
+  for (const k of ['load', 'currentRev', 'listen', 'login', 'session', 'logout', 'changePassword', 'playerCode', 'saveAvatar', 'save']) eq(typeof c[k], 'function', k);
+});
+clearInterval(store.pollTimer);
+document.getElementById('sum').textContent = `${results.pass} passaram · ${results.failed} falharam`;
+document.title = `${results.pass} ok / ${results.failed} falhas`;
+window.__results = results;
+</script></body></html>

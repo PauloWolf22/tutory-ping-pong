@@ -141,6 +141,6 @@ export function TelaoPage() {
       <button class="btn sm" onClick=${() => { setSound(!sound); setSoundState(!sound); }} aria-pressed=${sound}>${sound ? 'Som ligado' : 'Ligar som'}</button>
       <button class="btn sm" onClick=${fullscreen}>Tela cheia</button>
     </div>
-    ${store.mode === 'server' && !store.online && html`<div class="offline" role="status">Reconectando ao servidor…</div>`}
+    ${store.remote && !store.online && html`<div class="offline" role="status">Reconectando…</div>`}
   </div>`;
 }

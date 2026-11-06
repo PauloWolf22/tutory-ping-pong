@@ -47,7 +47,7 @@ export function EditorPage({ id }) {
   if (!player) {
     return html`<main class="page"><div class="glass empty"><h3>Participante não encontrado</h3><a class="btn" href="#/jogadores">Ver participantes</a></div></main>`;
   }
-  const needsCode = store.mode === 'server' && !store.admin;
+  const needsCode = store.remote && !store.admin;
   const patch = (p) => { setDirty(true); setDraft((d) => ({ ...d, ...p })); };
   const patchColor = (k, c) => { setDirty(true); setDraft((d) => ({ ...d, colors: { ...d.colors, [k]: c } })); };
   const save = async () => {

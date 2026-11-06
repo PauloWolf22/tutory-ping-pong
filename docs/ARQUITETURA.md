@@ -11,7 +11,7 @@ O briefing indicava preferência por React, TypeScript, Vite, Tailwind, Framer M
 | Tailwind | CSS com variáveis de marca | Tokens em `css/tokens.css` |
 | Framer Motion | CSS e Web Animations API | Sem dependência |
 | React Three Fiber | Three.js direto (r170) | A API imperativa combina com a cena única por tela |
-| Supabase | Servidor local próprio | Funciona sem conta e sem internet; adaptador documentado |
+| Supabase | Servidor local próprio ou Supabase | O app escolhe sozinho; ver INTEGRACAO-BANCO.md |
 
 Migrar para Vite no futuro é simples: os componentes já são funções com hooks.
 

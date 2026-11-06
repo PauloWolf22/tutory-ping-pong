@@ -47,20 +47,21 @@ start.bat -ResetPassword
 
 ## Modo local (sem servidor)
 
-Publicada em hospedagem estática (Vercel, GitHub Pages), a aplicação detecta a falta do servidor e passa para o **modo local**: os dados ficam só naquele navegador, o telão só acompanha janelas do mesmo navegador e a senha é apenas uma trava de uso, sem proteção real. A tela avisa quando isso acontece. Para vários aparelhos, use o servidor ou a integração em [docs/INTEGRACAO-BANCO.md](docs/INTEGRACAO-BANCO.md).
+Publicada em hospedagem estática (Vercel, GitHub Pages) sem Supabase configurado, a aplicação passa para o **modo local**: os dados ficam só naquele navegador, o telão só acompanha janelas do mesmo navegador e a senha é apenas uma trava de uso, sem proteção real. A tela avisa quando isso acontece. Para vários aparelhos, use o servidor na rede interna ou o Supabase, descrito em [docs/INTEGRACAO-BANCO.md](docs/INTEGRACAO-BANCO.md).
 
 ## Testes
 
 Com o servidor ligado:
 
 - `http://localhost:8787/tests/engine.test.html`: 52 testes do motor (sorteio, BYE, cascata de correção, pontuação, estatísticas).
+- `http://localhost:8787/tests/cloud.test.html`: 13 testes do fluxo com Supabase, usando banco simulado.
 - `http://localhost:8787/tests/presets.html`: todos os personagens remontados. Com `?acc=1`, acessórios, expressões e formatos.
 
 ## Documentação
 
 - [docs/ARQUITETURA.md](docs/ARQUITETURA.md): decisões técnicas, estrutura e segurança.
 - [docs/AVATARES.md](docs/AVATARES.md): análise do pack, o que foi possível personalizar e como regerar os modelos.
-- [docs/INTEGRACAO-BANCO.md](docs/INTEGRACAO-BANCO.md): como trocar o armazenamento por Supabase.
+- [docs/INTEGRACAO-BANCO.md](docs/INTEGRACAO-BANCO.md): como usar o campeonato pela internet com Supabase.
 
 ## Créditos
 

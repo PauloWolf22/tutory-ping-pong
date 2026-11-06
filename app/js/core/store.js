@@ -3,6 +3,8 @@
 //  - local (sem servidor, ex.: hospedagem estática): localStorage + BroadcastChannel, só no mesmo navegador.
 // Para trocar por Supabase, ver docs/INTEGRACAO-BANCO.md.
 import { newTournament, UserError } from './engine.js';
+import { SUPABASE } from '../config.js';
+import { createCloud } from './cloud.js';
 
 const LOCAL_DOC = 'tutory-pp-doc';
 const LOCAL_AUTH = 'tutory-pp-auth';
@@ -71,7 +73,15 @@ class Store {
     this.listeners.forEach((fn) => fn(this.version));
   }
 
-  async init() {
+  // Servidor ou Supabase: dados compartilhados entre aparelhos.
+  get remote() { return this.mode === 'server' || this.mode === 'cloud'; }
+
+  async init({ cloud = null, pollMs = 15000 } = {}) {
+    if (cloud) {
+      await this.initCloud(cloud, pollMs);
+      this.emit();
+      return;
+    }
     let health = null;
     // Lentidão não pode virar modo local por engano: duas tentativas com folga antes de desistir do servidor.
     for (let attempt = 0; attempt < 2 && !health; attempt++) {
@@ -85,6 +95,7 @@ class Store {
       } catch { /* tenta de novo; sem resposta, modo local */ }
     }
     if (health?.ok) await this.initServer(health);
+    else if (SUPABASE.url && SUPABASE.anonKey) await this.initCloud(await createCloud(SUPABASE), pollMs);
     else this.initLocal();
     this.emit();
   }
@@ -104,9 +115,50 @@ class Store {
   }
 
   async pull() {
+    if (this.mode === 'cloud') {
+      const data = await this.cloud.load();
+      this.rev = data.rev;
+      this.doc = withDefaults(data.doc);
+      return;
+    }
     const data = await api('/api/state');
     this.rev = data.rev;
     this.doc = withDefaults(data.state);
+  }
+
+  // ------------------------------------------------------------ supabase
+  async initCloud(cloud, pollMs) {
+    this.mode = 'cloud';
+    this.cloud = cloud;
+    this.hasPassword = true; // definida no script SQL: nenhum visitante cria a senha pelo site
+    await this.pull();
+    if (this.token) {
+      this.admin = await cloud.session(this.token).catch(() => false) === true;
+      if (!this.admin) this.setToken(null);
+    }
+    const refresh = (rev) => {
+      if (rev > this.rev && !this.sending && !this.dirty) return this.pull().then(() => this.emit());
+      return null;
+    };
+    cloud.listen((rev) => { refresh(rev)?.catch(() => {}); });
+    // Rede de segurança: o Realtime pode cair em silêncio, e o telão não pode ficar para trás.
+    const check = async () => {
+      try {
+        const rev = await cloud.currentRev();
+        const wasOffline = !this.online;
+        this.online = true;
+        if (wasOffline) {
+          await this.pull();
+          this.emit();
+        } else await refresh(rev);
+      } catch {
+        if (this.online) {
+          this.online = false;
+          this.emit();
+        }
+      }
+    };
+    this.pollTimer = setInterval(check, pollMs);
   }
 
   listen() {
@@ -141,8 +193,9 @@ class Store {
     try {
       while (this.dirty) {
         this.dirty = false;
-        const body = JSON.stringify(this.doc);
-        const r = await api(`/api/state?rev=${this.rev}`, { method: 'PUT', body }, this.token);
+        const r = this.mode === 'cloud'
+          ? await this.cloud.save(this.token, this.rev, this.doc)
+          : await api(`/api/state?rev=${this.rev}`, { method: 'PUT', body: JSON.stringify(this.doc) }, this.token);
         if (r.httpStatus === 409) {
           // outra sessão salvou antes: fica a versão do servidor, nada é sobrescrito às cegas
           this.rev = r.rev;
@@ -227,6 +280,8 @@ class Store {
       const h = await hashPassword(password, saved?.salt);
       if (!saved || h.hash !== saved.hash) throw new UserError('Senha incorreta.');
       sessionStorage.setItem(SESSION_TOKEN, 'local');
+    } else if (this.mode === 'cloud') {
+      this.setToken(await this.cloud.login(password));
     } else {
       const r = await api('/api/login', { method: 'POST', body: JSON.stringify({ password }) });
       this.setToken(r.token);
@@ -237,6 +292,7 @@ class Store {
 
   async logout() {
     if (this.mode === 'server') await api('/api/logout', { method: 'POST' }, this.token).catch(() => {});
+    if (this.mode === 'cloud') await this.cloud.logout(this.token).catch(() => {});
     this.setToken(null);
     this.admin = false;
     this.emit();
@@ -247,6 +303,8 @@ class Store {
     if (this.mode === 'local') {
       await this.login(current);
       localStorage.setItem(LOCAL_AUTH, JSON.stringify(await hashPassword(password)));
+    } else if (this.mode === 'cloud') {
+      await this.cloud.changePassword(this.token, current, password);
     } else {
       await api('/api/password', { method: 'POST', body: JSON.stringify({ current, password }) }, this.token);
     }
@@ -254,6 +312,7 @@ class Store {
 
   async playerCode(id) {
     if (this.mode === 'local') return null;
+    if (this.mode === 'cloud') return this.cloud.playerCode(this.token, id);
     const r = await api(`/api/player-code?id=${encodeURIComponent(id)}`, {}, this.token);
     return r.code;
   }
@@ -270,7 +329,9 @@ class Store {
       this.admin = wasAdmin;
       return;
     }
-    const r = await api('/api/avatar', { method: 'POST', body: JSON.stringify({ id, code, avatar }) }, this.token);
+    const r = this.mode === 'cloud'
+      ? { rev: await this.cloud.saveAvatar(this.token, id, code, avatar) }
+      : await api('/api/avatar', { method: 'POST', body: JSON.stringify({ id, code, avatar }) }, this.token);
     this.rev = r.rev;
     const p = this.doc.players.find((x) => x.id === id);
     if (p) p.avatar = avatar;
