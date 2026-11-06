@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Testes do motor</title>
+<style>body{font:14px/1.5 system-ui;background:#0a0d14;color:#d0ddef;padding:24px;max-width:960px;margin:auto}h1{font-size:20px}.ok{color:#5fd38d}.ko{color:#ff7b7b;font-weight:700}li{list-style:none}#sum{font-size:18px;font-weight:700;margin:12px 0}</style></head>
+<body><h1>Testes do motor do campeonato</h1><div id="sum"></div><ul id="out"></ul>
+<script type="module">
+import * as E from '../js/core/engine.js';
+const out = document.getElementById('out');
+let pass = 0, failed = 0;
+const failures = [];
+function test(name, fn) {
+  try { fn(); pass++; out.insertAdjacentHTML('beforeend', `<li class="ok">✓ ${name}</li>`); }
+  catch (e) { failed++; failures.push(name + ': ' + e.message); out.insertAdjacentHTML('beforeend', `<li class="ko">✗ ${name} — ${e.message}</li>`); }
+}
+const eq = (a, b, m = '') => { const x = JSON.stringify(a), y = JSON.stringify(b); if (x !== y) throw new Error(`${m} esperado ${y}, veio ${x}`); };
+const ok = (v, m = 'falso') => { if (!v) throw new Error(m); };
+const throws = (fn, re) => { try { fn(); } catch (e) { if (!(e instanceof E.UserError)) throw e; if (re && !re.test(e.message)) throw new Error('mensagem: ' + e.message); return; } throw new Error('deveria falhar'); };
+
+function seeded(seed) { let s = seed; return (n) => { s = (s * 1664525 + 1013904223) >>> 0; return s % n; }; }
+function make(n, oddMode = 'byes') {
+  const t = E.newTournament();
+  t.settings.oddMode = oddMode;
+  for (let i = 0; i < n; i++) E.addPlayer(t, { name: `Jogador ${i + 1}` });
+  return t;
+}
+function draw(t, seed = 7) {
+  E.startDraw(t);
+  const r = seeded(seed);
+  while (t.draw.status === 'live') E.drawNext(t, null, r);
+  return t;
+}
+function playAll(t) {
+  let m, guard = 0;
+  while ((m = E.nextMatch(t)) && guard++ < 300) E.saveGames(t, m.id, [[11, 5], [11, 7]]);
+}
+
+for (const n of [2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 16, 17, 32]) {
+  for (const mode of ['byes', 'preliminary']) {
+    test(`${n} jogadores (${mode}): chave íntegra até o campeão`, () => {
+      const t = draw(make(n, mode), n * 3 + 1);
+      const size = E.nextPow2(n);
+      eq(t.bracket.size, size, 'tamanho');
+      const first = t.bracket.rounds[0].matches.map((id) => t.matches[id]);
+      const inR1 = first.flatMap((m) => m.p).filter(Boolean);
+      eq(new Set(inR1).size, n, 'todos presentes sem duplicata');
+      eq(inR1.length, n, 'sem repetição');
+      ok(first.every((m) => m.p[0] !== m.p[1]), 'contra si mesmo');
+      eq(first.filter((m) => m.bye).length, size - n, 'quantidade de BYE');
+      eq(E.realMatches(t).length, n - 1, 'partidas reais');
+      playAll(t);
+      ok(E.champion(t), 'sem campeão');
+      eq(E.realMatches(t).filter((m) => E.isFinished(m)).length, n - 1, 'todas finalizadas');
+      eq(E.computeStats(t).ranking[0].player.id, E.champion(t).id, 'ranking');
+      eq(E.computeStats(t).pending, 0, 'pendentes');
+      const elim = t.players.filter((p) => E.playerStatus(t, p.id).key === 'out');
+      eq(elim.length, n - 2, 'eliminados');
+    });
+  }
+}
+
+test('Nomes das fases se adaptam', () => {
+  eq(E.roundNames(16, 'byes').map((r) => r.name), ['Oitavas de final', 'Quartas de final', 'Semifinal', 'Final']);
+  eq(E.roundNames(6, 'preliminary').map((r) => r.name), ['Rodada preliminar', 'Semifinal', 'Final']);
+  eq(E.roundNames(6, 'byes').map((r) => r.name), ['Quartas de final', 'Semifinal', 'Final']);
+  eq(E.roundNames(4, 'preliminary').map((r) => r.name), ['Semifinal', 'Final']);
+  eq(E.roundNames(12, 'preliminary')[0].name, 'Rodada preliminar');
+  eq(E.roundNames(12, 'preliminary')[1].name, 'Quartas de final');
+});
+
+test('Sorteio: 500 execuções sem duplicados nem autoconfronto', () => {
+  for (let s = 1; s <= 500; s++) {
+    const n = 2 + (s % 31);
+    const t = draw(make(n), s);
+    const ids = t.draw.slots.filter((x) => x !== 'BYE');
+    eq(new Set(ids).size, n);
+    ok(Object.values(t.matches).every((m) => !m.p[0] || m.p[0] !== m.p[1]));
+  }
+});
+
+test('Sorteio com crypto real não repete jogador', () => {
+  const t = make(16);
+  E.startDraw(t);
+  while (t.draw.status === 'live') E.drawNext(t);
+  eq(new Set(t.draw.slots).size, 16);
+});
+
+test('Distribuição do sorteio é razoavelmente uniforme', () => {
+  const hits = new Array(8).fill(0);
+  for (let i = 0; i < 4000; i++) {
+    const t = make(8);
+    E.startDraw(t);
+    E.drawNext(t);
+    hits[t.players.findIndex((p) => p.id === t.draw.last.playerId)]++;
+  }
+  ok(hits.every((h) => h > 350 && h < 650), 'distribuição: ' + hits);
+});
+
+test('Cabeças de chave: 1 e 2 em lados opostos e recebem os BYEs', () => {
+  const t = make(6);
+  t.players[3].seed = 1;
+  t.players[5].seed = 2;
+  draw(t);
+  const a = t.players[3].id, b = t.players[5].id;
+  const r0 = t.bracket.rounds[0].matches.map((id) => t.matches[id]);
+  const ma = r0.find((m) => m.p.includes(a)), mb = r0.find((m) => m.p.includes(b));
+  ok(ma.bye && mb.bye, 'BYE para cabeças');
+  ok(ma.index < 2 !== mb.index < 2, 'lados opostos');
+});
+
+test('Sorteio manual posiciona, desfaz e bloqueia repetição', () => {
+  const t = make(4);
+  E.startDraw(t, { mode: 'manual' });
+  const [a, b, c, d] = t.players;
+  E.drawNext(t, a.id);
+  throws(() => E.drawNext(t, a.id), /já foi sorteado/);
+  E.undoDraw(t);
+  E.drawNext(t, b.id);
+  E.drawNext(t, a.id);
+  E.drawNext(t, c.id);
+  E.drawNext(t, d.id);
+  eq(t.draw.status, 'done');
+  eq(t.matches['m0-0'].p, [b.id, a.id]);
+});
+
+test('Novo sorteio só antes das partidas', () => {
+  const t = draw(make(4));
+  E.resetDraw(t);
+  eq(t.draw.status, 'idle');
+  draw(t);
+  E.startMatch(t, E.nextMatch(t).id);
+  throws(() => E.resetDraw(t), /já começaram/);
+  throws(() => E.startDraw(t), /já começaram/);
+});
+
+test('Inscrições: duplicatas e número repetido bloqueados', () => {
+  const t = make(2);
+  throws(() => E.addPlayer(t, { name: '  jogador   1 ' }), /já está inscrito/);
+  E.addPlayer(t, { name: 'André' });
+  throws(() => E.addPlayer(t, { name: 'ANDRE' }), /já está inscrito/);
+  throws(() => E.addPlayer(t, { name: 'Novo', number: 1 }), /número 1/);
+  throws(() => E.addPlayer(t, { name: '   ' }), /nome/);
+  throw_if_roster_open();
+  function throw_if_roster_open() { draw(t); throws(() => E.addPlayer(t, { name: 'Tarde' }), /inscrições/i); throws(() => E.removePlayer(t, t.players[0].id), /inscrições/i); }
+});
+
+test('Importação: acrescenta e relata duplicados', () => {
+  const t = make(1);
+  const r = E.importPlayers(t, 'Ana Lima; Aninha\nBruno\n\nana lima\nJogador 1\nCarla - Cá');
+  eq(r.added.map((p) => p.name), ['Ana Lima', 'Bruno', 'Carla']);
+  eq(r.added[0].nick, 'Aninha');
+  eq(r.added[2].nick, 'Cá');
+  eq(r.skipped.length, 2);
+});
+
+const S = { bestOf: 5, points: 11, winBy: 2, cap: 0 };
+test('Validação de games: 11 pontos com dois de diferença', () => {
+  eq(E.validateGame(11, 8, S), 0);
+  eq(E.validateGame(9, 11, S), 1);
+  eq(E.validateGame(12, 10, S), 0);
+  eq(E.validateGame(14, 16, S), 1);
+  throws(() => E.validateGame(11, 10, S), /diferença/);
+  throws(() => E.validateGame(10, 8, S), /até 11/);
+  throws(() => E.validateGame(13, 10, S), /terminado antes/);
+  throws(() => E.validateGame(7, 7, S), /empatado/);
+  throws(() => E.validateGame(-1, 11, S), /inteiros/);
+  throws(() => E.validateGame(11.5, 3, S), /inteiros/);
+});
+
+test('Validação com limite de pontos e sem vantagem', () => {
+  const c = { ...S, cap: 15 };
+  eq(E.validateGame(15, 14, c), 0);
+  eq(E.validateGame(13, 15, c), 1);
+  throws(() => E.validateGame(16, 14, c), /limite/);
+  const noAdv = { ...S, winBy: 1 };
+  eq(E.validateGame(11, 10, noAdv), 0);
+  throws(() => E.validateGame(12, 10, noAdv), /terminado antes/);
+});
+
+test('Exemplo do briefing: 11x8, 11x9, 9x11, 11x7 em melhor de 5', () => {
+  eq(E.validateGames([[11, 8], [11, 9], [9, 11], [11, 7]], S), 0);
+  throws(() => E.validateGames([[11, 8], [11, 9]], S), /incompleta/);
+  throws(() => E.validateGames([[11, 8], [11, 9], [11, 7], [11, 3]], S), /sobra/);
+});
+
+test('Avanço automático e BYE', () => {
+  const t = draw(make(6));
+  const byes = Object.values(t.matches).filter((m) => m.bye);
+  eq(byes.length, 2);
+  for (const b of byes) eq(t.matches[b.next.id].p[b.next.slot], b.winner, 'BYE avançou');
+  const m = E.nextMatch(t);
+  throws(() => E.saveGames(t, t.bracket.rounds[1].matches[0], [[11, 1], [11, 1]]), /dois jogadores/);
+  E.saveGames(t, m.id, [[11, 3], [3, 11], [11, 4]]);
+  eq(m.status, 'done');
+  eq(t.matches[m.next.id].p[m.next.slot], m.p[0]);
+  eq(E.playerStatus(t, m.p[1]).key, 'out');
+});
+
+test('Não avança sem resultado válido', () => {
+  const t = draw(make(4));
+  const m = E.nextMatch(t);
+  throws(() => E.saveGames(t, m.id, [[11, 10], [11, 3]]));
+  eq(m.winner, null);
+  eq(t.matches[m.next.id].p[m.next.slot], null);
+  throws(() => E.saveManual(t, m.id, 5, 5), /empate/);
+});
+
+test('Correção de resultado atualiza as fases seguintes em cascata', () => {
+  const t = draw(make(8));
+  playAll(t);
+  const champ = E.champion(t).id;
+  const q = t.bracket.rounds[0].matches.map((id) => t.matches[id]).find((m) => m.winner === champ);
+  const other = q.p.find((x) => x !== champ);
+  eq(E.correctionImpact(t, q.id, q.p.indexOf(other)).length, 2, 'semi e final impactadas');
+  E.saveGames(t, q.id, q.p[0] === other ? [[11, 1], [11, 2]] : [[1, 11], [2, 11]]);
+  eq(q.winner, other);
+  const semi = t.matches[q.next.id];
+  eq(semi.p[q.next.slot], other, 'novo jogador entrou');
+  eq(semi.winner, null, 'semi reiniciada');
+  eq(semi.status, 'waiting');
+  const fin = E.finalMatch(t);
+  eq(fin.winner, null, 'final reiniciada');
+  ok(!fin.p.includes(champ), 'ex-campeão removido da final');
+  eq(E.champion(t), null);
+  eq(E.playerStatus(t, champ).key, 'out');
+  // correção que mantém o vencedor não reinicia nada
+  const other2 = t.bracket.rounds[0].matches.map((id) => t.matches[id]).find((m) => m.id !== q.id && m.next.id !== q.next.id);
+  const finSide = t.matches[other2.next.id];
+  E.saveGames(t, other2.id, other2.winner === other2.p[0] ? [[11, 9], [11, 9]] : [[9, 11], [9, 11]]);
+  eq(finSide.winner !== null, true, 'semi vizinha preservada');
+  playAll(t);
+  ok(E.champion(t), 'campeonato retoma');
+});
+
+test('Remover resultado limpa a sequência', () => {
+  const t = draw(make(4));
+  playAll(t);
+  const semi = t.matches['m0-0'];
+  E.revertResult(t, semi.id);
+  eq(semi.status, 'waiting');
+  eq(t.matches['m1-0'].winner, null);
+  eq(t.matches['m1-0'].p[0], null);
+});
+
+test('Placar ao vivo: pontos, fechar game, desfazer e confirmar', () => {
+  const t = make(2);
+  t.scoring = { bestOf: 3, points: 3, winBy: 2, cap: 0 };
+  draw(t);
+  const id = 'm0-0';
+  for (const s of [0, 0, 1, 0]) E.addPoint(t, id, s);
+  eq(t.matches[id].games, [[3, 1]]);
+  eq(t.matches[id].live, [0, 0]);
+  E.undoPoint(t, id);
+  eq(t.matches[id].games, []);
+  eq(t.matches[id].live, [2, 1]);
+  E.addPoint(t, id, 0);
+  for (const s of [1, 0, 0, 0]) E.addPoint(t, id, s);
+  eq(t.matches[id].games, [[3, 1], [3, 1]]);
+  eq(E.pendingWinner(t, t.matches[id]), 0);
+  throws(() => E.addPoint(t, id, 0), /decidida/);
+  E.confirmLive(t, id);
+  eq(t.matches[id].status, 'done');
+  eq(E.champion(t).id, t.matches[id].p[0]);
+});
+
+test('Deuce ao vivo: 10x10 só fecha com dois pontos', () => {
+  const t = draw(make(2));
+  const m = t.matches['m0-0'];
+  for (let i = 0; i < 10; i++) { E.addPoint(t, m.id, 0); E.addPoint(t, m.id, 1); }
+  E.addPoint(t, m.id, 0);
+  eq(m.games, []);
+  eq(m.live, [11, 10]);
+  E.addPoint(t, m.id, 0);
+  eq(m.games, [[12, 10]]);
+});
+
+test('WO: vencedor avança e não conta como jogo disputado', () => {
+  const t = draw(make(4));
+  const m = E.nextMatch(t);
+  E.saveWO(t, m.id, 1);
+  eq(m.status, 'wo');
+  eq(m.winner, m.p[1]);
+  eq(t.matches[m.next.id].p[m.next.slot], m.p[1]);
+  const row = E.computeStats(t).ranking.find((r) => r.player.id === m.p[1]);
+  eq(row.played, 0);
+  eq(row.wins, 1);
+  eq(row.wo, 1);
+});
+
+test('Adiar e definir próxima partida', () => {
+  const t = draw(make(8));
+  const m = E.nextMatch(t);
+  E.postponeMatch(t, m.id);
+  eq(m.status, 'postponed');
+  ok(E.nextMatch(t).id !== m.id);
+  E.setNextMatch(t, m.id);
+  eq(E.nextMatch(t).id, m.id);
+  eq(E.displayStatus(t, m), 'next');
+});
+
+test('Estatísticas: vitórias, pontos e maior diferença', () => {
+  const t = draw(make(4));
+  const a = t.matches['m0-0'];
+  E.saveGames(t, a.id, [[11, 2], [11, 3]]);
+  E.saveGames(t, 'm0-1', [[11, 9], [9, 11], [11, 9]]);
+  E.saveGames(t, 'm1-0', [[11, 7], [11, 7]]);
+  const s = E.computeStats(t);
+  eq(s.finished, 3);
+  eq(s.pending, 0);
+  eq(s.champion.id, a.winner);
+  eq(s.mostWins.player.id, a.winner);
+  eq(s.mostPoints.pointsFor > 0, true);
+  eq(s.biggestMargin.margin, 17);
+  eq(s.ranking[0].wins, 2);
+  eq(s.ranking[1].player.id, s.vice.id);
+});
+
+test('Regulamento registra alterações', () => {
+  const t = make(0);
+  eq(E.updateRegulation(t, { location: 'Sala 2', notes: t.regulation.notes }), ['Local']);
+  eq(t.regulation.log[0].fields, ['Local']);
+  eq(E.updateRegulation(t, { location: 'Sala 2' }), []);
+  eq(t.regulation.log.length, 1);
+});
+
+test('Configuração de pontuação é validada', () => {
+  const t = make(0);
+  E.updateScoring(t, { bestOf: 5, points: 21 });
+  eq(t.scoring.points, 21);
+  throws(() => E.updateScoring(t, { bestOf: 4 }));
+  throws(() => E.updateScoring(t, { cap: 10 }), /limite/);
+});
+
+test('Reiniciar mantém jogadores e limpa resultados', () => {
+  const t = draw(make(5));
+  playAll(t);
+  E.restartTournament(t);
+  eq(t.players.length, 5);
+  eq(t.bracket, null);
+  eq(E.champion(t), null);
+  eq(E.tournamentStatus(t).key, 'open');
+  draw(t);
+  ok(t.bracket);
+});
+
+test('Documento sobrevive a serialização (persistência)', () => {
+  const t = draw(make(7));
+  const m = E.nextMatch(t);
+  E.addPoint(t, m.id, 0);
+  const copy = JSON.parse(JSON.stringify(t));
+  eq(E.nextMatch(copy)?.id, E.nextMatch(t)?.id);
+  E.addPoint(copy, m.id, 1);
+  eq(copy.matches[m.id].live, [1, 1]);
+});
+
+test('CSV exporta cada partida real', () => {
+  const t = draw(make(6));
+  playAll(t);
+  const csv = E.toCSV(t).trim().split('\r\n');
+  eq(csv.length, 6);
+  ok(csv[1].includes('11-5'));
+});
+
+document.getElementById('sum').textContent = `${pass} passaram · ${failed} falharam`;
+document.getElementById('sum').className = failed ? 'ko' : 'ok';
+window.__results = { pass, failed, failures };
+document.title = `${pass} ok / ${failed} falhas`;
+</script></body></html>
