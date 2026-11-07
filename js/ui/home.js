@@ -1,14 +1,14 @@
 import { html, useEffect, useDoc, Ava, store, useStage, avatarOf, playerById, displayName } from './lib.js';
 import * as E from '../core/engine.js';
 import { TableStage } from '../three/stage.js';
-import { presetToAvatar, PRESETS, webglAvailable } from '../three/avatars.js';
+import { avatarFromName, webglAvailable } from '../three/avatars.js';
 
 export function heroPair(t) {
   const m = E.liveMatches(t)[0] || E.nextMatch(t) || E.lastResult(t);
   const a = m && playerById(t, m.p[0]), b = m && playerById(t, m.p[1]);
   if (a && b) return [avatarOf(a), avatarOf(b)];
   if (t.players.length >= 2) return [avatarOf(t.players[0]), avatarOf(t.players[1])];
-  return [presetToAvatar(PRESETS[0]), presetToAvatar(PRESETS.find((p) => p.id === 'casual3'))];
+  return [avatarFromName('Tutory', 'male'), avatarFromName('Sports', 'female')];
 }
 
 export function Versus({ t, m, size = 72, label }) {

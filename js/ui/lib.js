@@ -100,7 +100,7 @@ export function Overlays() {
 }
 
 // ---------------------------------------------------------------- avatares 2D
-export const avatarOf = (player) => normalizeAvatar(player?.avatar || avatarFromName(player?.name || '?'));
+export const avatarOf = (player) => (player?.avatar?.v === 2 ? normalizeAvatar(player.avatar) : avatarFromName(player?.name || '?'));
 const initials = (name = '?') => name.trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join('').toUpperCase();
 
 export function Ava({ player, size = 48, kind = 'bust', state = '' }) {
