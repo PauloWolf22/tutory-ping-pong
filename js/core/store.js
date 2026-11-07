@@ -5,6 +5,7 @@
 import { newTournament, UserError } from './engine.js';
 import { SUPABASE } from '../config.js';
 import { createCloud } from './cloud.js';
+import { newFootball } from './football.js';
 
 const LOCAL_DOC = 'tutory-pp-doc';
 const LOCAL_AUTH = 'tutory-pp-auth';
@@ -12,7 +13,7 @@ const SESSION_TOKEN = 'tutory-pp-token';
 const safe = (fn, fallback = null) => { try { return fn(); } catch { return fallback; } };
 
 function withDefaults(doc) {
-  const base = newTournament();
+  const base = { ...newTournament(), football: newFootball() };
   if (!doc) return base;
   return {
     ...base, ...doc,
@@ -22,6 +23,7 @@ function withDefaults(doc) {
     settings: { ...base.settings, ...doc.settings },
     draw: { ...base.draw, ...doc.draw },
     display: { ...base.display, ...doc.display },
+    football: { ...base.football, ...doc.football },
   };
 }
 

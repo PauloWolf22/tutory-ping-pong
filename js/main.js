@@ -10,12 +10,13 @@ import { StatsPage } from './ui/stats.js';
 import { AdminPage } from './ui/admin.js';
 import { TelaoPage } from './ui/telao.js';
 import { ChampionPage } from './ui/champion.js';
+import { FootballPage } from './ui/football.js';
 
 const LINKS = [
   ['', 'Central'], ['jogadores', 'Jogadores'], ['sorteio', 'Sorteio'], ['chave', 'Chaveamento'], ['partidas', 'Partidas'],
-  ['regulamento', 'Regulamento'], ['estatisticas', 'Estatísticas'],
+  ['futebol', 'Futebol'], ['regulamento', 'Regulamento'], ['estatisticas', 'Estatísticas'],
 ];
-const MOBILE = [['', 'Central'], ['jogadores', 'Jogadores'], ['chave', 'Chave'], ['partidas', 'Partidas'], ['admin', 'Painel']];
+const MOBILE = [['', 'Central'], ['jogadores', 'Jogadores'], ['chave', 'Chave'], ['partidas', 'Partidas'], ['futebol', 'Futebol'], ['admin', 'Painel']];
 
 function Shell({ route, children }) {
   const doc = useDoc();
@@ -58,6 +59,7 @@ function App() {
     case 'chave': screen = html`<${BracketPage} />`; break;
     case 'partidas': screen = html`<${MatchesPage} />`; break;
     case 'partida': screen = html`<${MatchPage} key=${arg} id=${arg} />`; break;
+    case 'futebol': screen = html`<${FootballPage} />`; break;
     case 'regulamento': screen = html`<${RegulationPage} />`; break;
     case 'estatisticas': screen = html`<${StatsPage} />`; break;
     case 'admin': screen = html`<${AdminPage} />`; break;
