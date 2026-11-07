@@ -2,6 +2,6 @@
 // A chave anon é pública por natureza: quem protege os dados são as regras de supabase/schema.sql.
 // Nunca coloque aqui a chave service_role.
 export const SUPABASE = {
-  url: '',
-  anonKey: '',
+  url: 'https://ckpyaqnhrtypbamezxpw.supabase.co',
+  anonKey: 'sb_publishable_4sCPav_bb3hc2hwz8GEtgQ_k2horDes',
 };
