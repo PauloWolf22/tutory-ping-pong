@@ -29,10 +29,16 @@ if errorlevel 1 goto erro
 git remote get-url origin >nul 2>&1
 if errorlevel 1 git remote add origin https://github.com/%REPO%.git
 
-echo [3/4] Enviando o app...
+echo [3/4] Enviando o app (a primeira vez com os avatares leva alguns minutos)...
+git config http.postBuffer 524288000
+git config http.lowSpeedLimit 1000
+git config http.lowSpeedTime 600
 git push -u origin main
 if errorlevel 1 goto erro
-git subtree split --prefix app -b gh-pages
+set "SITE="
+for /f %%i in ('git subtree split --prefix app') do set "SITE=%%i"
+if not defined SITE goto erro
+git branch -f gh-pages %SITE%
 if errorlevel 1 goto erro
 git push -f origin gh-pages
 if errorlevel 1 goto erro
