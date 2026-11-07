@@ -62,6 +62,15 @@ export function RegulationPage() {
       </div>
       ${reg.log.length > 0 && html`<details class="reg-log glass card"><summary>Histórico de alterações (${reg.log.length})</summary>
         <ul>${reg.log.map((l) => html`<li key=${l.at}><span class="muted">${fmtDate(l.at)}</span> ${l.fields.join(', ')}</li>`)}</ul></details>`}
+      <details class="reg-log glass card" id="creditos"><summary>Créditos dos avatares</summary>
+        <p class="muted">Corpos, roupas e cabelos feitos com o MakeHuman e o MPFB, a partir de peças da comunidade MakeHuman (makehumancommunity.org). A maioria das peças é de domínio público (CC0). As peças abaixo são CC BY (Creative Commons Atribuição) e usadas com crédito aos autores:</p>
+        <ul>
+          <li><strong>Elvaerwyn</strong>: cabelos Wavy Bob, Braided Rows, Grump Hair e Micky Afro; barba Scruffy Beard</li>
+          <li><strong>punkduck</strong>: cabelos Alpha7 Curly e Alpha7 Long</li>
+          <li><strong>grinsegold</strong>: barba cheia e bigode</li>
+        </ul>
+        <p class="muted">Sobre a licença: <a href="https://creativecommons.org/licenses/" target="_blank" rel="noopener">creativecommons.org/licenses</a>. As peças foram adaptadas para a web (malha, texturas e encaixe no esqueleto).</p>
+      </details>
     `}
   </main>`;
 }

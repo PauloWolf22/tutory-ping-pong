@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/three/OrbitControls.js';
 import { RoomEnvironment } from '../vendor/three/RoomEnvironment.js';
-import { Avatar, WORLD_SCALE, loadLibrary, portrait, webglAvailable } from './avatars.js';
+import { createAvatar, portrait, webglAvailable } from './avatars.js';
 
 const COLORS = { abyss: 0x020308, deep: 0x0a1a3a, electric: 0x0040c8, beam: 0x3b7bf5, ice: 0xd0ddef, gold: 0xc9a96e };
 const ease = { out: (t) => 1 - (1 - t) ** 3, inOut: (t) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2), back: (t) => 1 + 2.7 * (t - 1) ** 3 + 1.7 * (t - 1) ** 2 };
@@ -134,17 +134,14 @@ export class Stage {
 
   async createAvatar(config, { x = 0, z = 0, ry = 0, anim = 'Idle', y = 0 } = {}) {
     if (!this.ok) return null;
-    const lib = await loadLibrary();
-    if (this.disposed) return null;
-    const a = new Avatar(lib, { ...config, pose: anim });
-    a.group.scale.setScalar(WORLD_SCALE);
+    const a = await createAvatar({ ...config, pose: anim });
+    if (this.disposed) { a.dispose(); return null; }
     a.group.position.set(x, y, z);
     a.group.rotation.y = ry;
     this.scene.add(a.group);
     this.avatars.add(a);
     return a;
   }
-
   removeAvatar(a) {
     if (!a) return;
     this.avatars.delete(a);
@@ -181,22 +178,36 @@ export class EditorStage extends Stage {
   async setAvatar(config, pose) {
     if (!this.ok) return;
     const token = ++this.token;
-    const lib = await loadLibrary();
-    if (this.disposed || token !== this.token) return;
-    const next = new Avatar(lib, { ...config, pose: pose || config.pose || 'Idle' });
-    if (this.avatar?.current && this.avatar.current.getClip().name === next.current.getClip().name) next.current.time = this.avatar.current.time;
-    next.group.scale.setScalar(WORLD_SCALE);
+    const cfg = { ...config, pose: pose || config.pose || 'Idle' };
+    // mesma base: troca no lugar, sem recarregar o corpo
+    if (this.avatar && this.avatar.config.gender === cfg.gender) {
+      await this.avatar.apply(cfg);
+      return;
+    }
+    const next = await createAvatar(cfg);
+    if (this.disposed || token !== this.token) { next.dispose(); return; }
     this.removeAvatar(this.avatar);
     this.scene.add(next.group);
     this.avatars.add(next);
     this.avatar = next;
   }
 
+  focus(kind) {
+    if (!this.ok) return;
+    const views = { face: [[0.28, 1.66, 1.15], [0, 1.6, 0]], bust: [[0.5, 1.5, 2.4], [0, 1.32, 0]], body: [[0.8, 1.3, 5.6], [0, 0.95, 0]] };
+    const [p, t] = views[kind] || views.bust;
+    const fromP = this.camera.position.clone(), fromT = this.controls.target.clone();
+    this.tween(0.6, (k) => {
+      this.camera.position.lerpVectors(fromP, new THREE.Vector3(...p), k);
+      this.controls.target.lerpVectors(fromT, new THREE.Vector3(...t), k);
+    });
+  }
+
   setPose(name) {
     const once = ['SwordSlash', 'Punch', 'Jump', 'PickUp', 'Roll', 'Victory', 'Defeat', 'SitDown'];
     if (!this.avatar) return;
     if (name === 'Defeat' || name === 'SitDown') this.avatar.play(name, { loop: false });
-    else if (once.includes(name)) this.avatar.play(name, { loop: false, then: name === 'Victory' ? 'Victory' : 'Idle' });
+    else if (once.includes(name)) this.avatar.play(name, { loop: false, then: name === 'Victory' ? 'Victory' : this.avatar.config.pose === name ? 'Idle' : this.avatar.config.pose || 'Idle' });
     else this.avatar.play(name);
   }
 }
@@ -285,8 +296,8 @@ export class TableStage extends Stage {
     if (key === this.playersKey) return;
     this.playersKey = key;
     const [pa, pb] = await Promise.all([
-      a ? this.createAvatar(a, { x: -1.95, z: 0.05, ry: Math.PI / 2 - 0.5 }) : null,
-      b ? this.createAvatar(b, { x: 1.95, z: 0.05, ry: -Math.PI / 2 + 0.5 }) : null,
+      a ? this.createAvatar(a, { x: -1.95, z: 0.05, ry: Math.PI / 2 - 0.5, anim: 'Ready' }) : null,
+      b ? this.createAvatar(b, { x: 1.95, z: 0.05, ry: -Math.PI / 2 + 0.5, anim: 'Ready' }) : null,
     ]);
     if (this.disposed || token !== this.token) { this.removeAvatar(pa); this.removeAvatar(pb); return; }
     this.players.forEach((p) => this.removeAvatar(p));
@@ -305,7 +316,7 @@ export class TableStage extends Stage {
     const hitter = this.direction > 0 ? 0 : 1;
     const receiver = 1 - hitter;
     // resposta: o receptor começa a rebater um pouco antes da bola chegar
-    if (before < 0.68 && this.phase >= 0.68) this.players[receiver]?.play('SwordSlash', { loop: false, then: 'Idle', fade: 0.12, speed: 1.6 });
+    if (before < 0.68 && this.phase >= 0.68) this.players[receiver]?.play('SwordSlash', { loop: false, then: 'Ready', fade: 0.12, speed: 1.2 });
     if (this.phase >= 1) {
       this.phase = 0;
       this.direction *= -1;
@@ -322,8 +333,8 @@ export class TableStage extends Stage {
   // Reação visual a um ponto marcado: vencedor comemora, adversário sente.
   celebrate(side) {
     const w = this.players[side], l = this.players[1 - side];
-    w?.play('Jump', { loop: false, then: 'Idle', fade: 0.12 });
-    l?.play('RecieveHit', { loop: false, then: 'Idle', fade: 0.12 });
+    w?.play('Jump', { loop: false, then: 'Ready', fade: 0.12 });
+    l?.play('RecieveHit', { loop: false, then: 'Ready', fade: 0.12 });
   }
 
   finish(side) {
@@ -717,7 +728,7 @@ export class DrawStage extends Stage {
       this.slots[side] = avatar;
       if (reveal === side) {
         avatar.play('Jump', { loop: false, then: 'Idle', fade: 0.05 });
-        await this.tween(0.45, (k) => avatar.group.scale.setScalar(WORLD_SCALE * Math.max(0.01, k)), ease.back);
+        await this.tween(0.45, (k) => avatar.group.scale.setScalar(avatar.config.height * Math.max(0.01, k)), ease.back);
       }
     }
   }

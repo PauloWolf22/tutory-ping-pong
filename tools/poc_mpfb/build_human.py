@@ -71,7 +71,7 @@ else:
             ('toigo_halter_dress_knee_length', 'Vestido frente única'), ('toigo_shift_dress', 'Vestido reto'), ('toigo_cut_out_dress', 'Vestido recortado'), ('toigo_dress_with_tiered_skirt', 'Vestido em camadas'), ('aethelraed_flapper_dress', 'Vestido melindrosa'), ('mindfront_kimono', 'Quimono')]
     TOPS = [('joepal_crude_t-shirt_female', 'Camiseta'), ('namuhekam_male_polo_shirt', 'Polo'), ('toigo_camisole_top', 'Regata'), ('toigo_fisherman_sweater', 'Suéter')]
     BOTTOMS = [('cortu_cargo_pants', 'Calça cargo'), ('cortu_jeans_shorts', 'Bermuda jeans'), ('toigo_wool_pants', 'Calça social'), ('frankyaye_mini_skirt_01', 'Minissaia'), ('toigo_long_full_skirt', 'Saia longa')]
-    SHOES = [('shoes03', 'Calçado 1'), ('shoes01', 'Tênis 1'), ('shoes02', 'Tênis 2'), ('shoes04', 'Calçado 2'), ('shoes05', 'Calçado 3'), ('shoes06', 'Calçado 4'), ('toigo_ankle_boots_female', 'Bota curta'), ('toigo_flats', 'Sapatilha'), ('toigo_ballet_flats', 'Sapatilha de balé')]
+    SHOES = [('shoes03', 'Calçado 1'), ('shoes01', 'Tênis 1'), ('shoes02', 'Tênis 2'), ('shoes04', 'Calçado 2'), ('shoes05', 'Calçado 3'), ('shoes06', 'Calçado 4'), ('toigo_ankle_boots_female', 'Bota curta'), ('toigo_ballet_flats', 'Sapatilha de balé')]
     BEARDS = []
 GLASSES = [('kwnet_at_optical_glasses', 'Grau'), ('frankyaye_glasses_library_male', 'Redondo'), ('spamrakuen_sagerfrogs_glasses_01', 'Armação fina')]
 HATS = [('jujube_newsboy_cap', 'Boina'), ('fedora01', 'Fedora'), ('aethelraed_unraed_cloche_hat', 'Chapéu cloche')]

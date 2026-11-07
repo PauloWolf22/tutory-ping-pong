@@ -1,4 +1,4 @@
 data/
 *.tmp
 *-site.zip
-app/assets/avatars-poc/
+app/assets/humans/*.blend

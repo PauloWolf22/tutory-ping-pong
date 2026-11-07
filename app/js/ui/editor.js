@@ -1,18 +1,14 @@
-import { html, useState, useEffect, useRef, store, useDoc, useStage, go, toast, playerById, avatarOf, handleError } from './lib.js';
+import { html, useState, useEffect, store, useDoc, useStage, go, toast, playerById, avatarOf, handleError } from './lib.js';
 import { EditorStage } from '../three/stage.js';
 import {
-  loadLibrary, normalizeAvatar, presetToAvatar, PRESETS, SKIN_TONES, HAIR_COLORS, FABRIC_COLORS, HEAD_SHAPES, EXPRESSIONS, POSES, RACKETS, ACCESSORIES, autoEyeColor, webglAvailable,
+  loadGender, normalizeAvatar, avatarFromName, portrait, webglAvailable, GENDERS, SKINS, HAIR_COLORS, CLOTH_COLORS, CATEGORIES, OPTIONAL, SLIDERS, RACKETS, POSES,
 } from '../three/avatars.js';
 
-const TABS = [['look', 'Personagem'], ['clothes', 'Roupa'], ['head', 'Cabeça'], ['hair', 'Cabelo'], ['face', 'Rosto'], ['extras', 'Acessórios'], ['racket', 'Raquete'], ['pose', 'Pose']];
+const TABS = [['base', 'Base'], ['face', 'Rosto'], ['body', 'Corpo'], ['clothes', 'Roupas'], ['hair', 'Cabelo'], ['extras', 'Acessórios'], ['pose', 'Pose']];
+const FACE_GROUPS = ['Rosto', 'Olhos e sobrancelhas', 'Nariz e boca', 'Expressão'];
+const BODY_GROUPS = ['Corpo', 'Traços de origem'];
 
-function Swatches({ colors, value, onChange, label, allowNone }) {
-  return html`<div class="swatches" role="group" aria-label=${label}>
-    ${allowNone && html`<button class=${'swatch none ' + (!value ? 'on' : '')} onClick=${() => onChange(null)} title=${allowNone} aria-label=${allowNone}></button>`}
-    ${colors.map((c) => html`<button key=${c} class=${'swatch ' + (value === c ? 'on' : '')} style=${'background:' + c} onClick=${() => onChange(c)} aria-label=${'Cor ' + c}></button>`)}
-    <label class="swatch custom" title="Outra cor"><input type="color" value=${value || '#3b7bf5'} onInput=${(e) => onChange(e.target.value)} aria-label=${'Escolher outra cor para ' + label} /></label>
-  </div>`;
-}
+const Group = ({ title, hint, children }) => html`<section class="ed-group"><h4>${title}</h4>${hint && html`<p class="muted hint">${hint}</p>`}${children}</section>`;
 
 function Options({ items, value, onChange, none }) {
   return html`<div class="options">
@@ -21,124 +17,118 @@ function Options({ items, value, onChange, none }) {
   </div>`;
 }
 
-const Group = ({ title, hint, children }) => html`<section class="ed-group"><h4>${title}</h4>${hint && html`<p class="muted hint">${hint}</p>`}${children}</section>`;
+function Swatches({ colors, value, onChange, label, none }) {
+  return html`<div class="swatches" role="group" aria-label=${label}>
+    ${none && html`<button class=${'swatch none ' + (!value ? 'on' : '')} onClick=${() => onChange(null)} title=${none} aria-label=${none}></button>`}
+    ${colors.map((c) => html`<button key=${c} class=${'swatch ' + (value === c ? 'on' : '')} style=${'background:' + c} onClick=${() => onChange(c)} aria-label=${'Cor ' + c}></button>`)}
+    <label class="swatch custom" title="Outra cor"><input type="color" value=${value || '#3b7bf5'} onInput=${(e) => onChange(e.target.value)} aria-label=${'Outra cor para ' + label} /></label>
+  </div>`;
+}
 
-function ColorSlots({ entry, entryKey, draft, patchColor }) {
-  const slots = (entry?.parts || []).filter((p) => !['skin', 'shoes', 'hair', 'eyes', 'brows'].includes(p.slot));
-  return slots.map((p) => html`<${Group} key=${p.slot} title=${p.slot}>
-    <${Swatches} label=${p.slot} colors=${FABRIC_COLORS} value=${draft.colors[`${entryKey}:${p.slot}`] || p.color} onChange=${(c) => patchColor(`${entryKey}:${p.slot}`, c)} />
-  <//>`);
+function Slider({ label, neg, pos, morph, onChange }) {
+  const value = (morph[pos] || 0) - (neg ? morph[neg] || 0 : 0);
+  return html`<label class="ed-slider"><span>${label}</span>
+    <input type="range" min=${neg ? -1.6 : 0} max="1.6" step="0.02" value=${value} onInput=${(e) => onChange(neg, pos, +e.target.value)} /></label>`;
 }
 
 export function EditorPage({ id }) {
   const t = useDoc();
   const player = playerById(t, id);
   const [draft, setDraft] = useState(() => normalizeAvatar(player ? avatarOf(player) : {}));
-  const [tab, setTab] = useState('look');
-  const [lib, setLib] = useState(null);
+  const [tab, setTab] = useState('base');
+  const [meta, setMeta] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [dirty, setDirty] = useState(false);
   const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(true);
   const [host, stage] = useStage((el) => new EditorStage(el));
 
-  useEffect(() => { loadLibrary().then(setLib).catch(handleError); }, []);
-  useEffect(() => { stage.current?.setAvatar(draft, draft.pose); }, [JSON.stringify(draft)]);
+  useEffect(() => { loadGender(draft.gender).then((lib) => setMeta(lib.meta)).catch(handleError); }, [draft.gender]);
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    stage.current?.setAvatar(draft, draft.pose)?.then(() => live && setLoading(false)).catch(handleError);
+    return () => { live = false; };
+  }, [JSON.stringify({ ...draft, thumb: null })]);
 
-  if (!player) {
-    return html`<main class="page"><div class="glass empty"><h3>Participante não encontrado</h3><a class="btn" href="#/jogadores">Ver participantes</a></div></main>`;
-  }
+  if (!player) return html`<main class="page"><div class="glass empty"><h3>Participante não encontrado</h3><a class="btn" href="#/jogadores">Ver participantes</a></div></main>`;
   const needsCode = store.remote && !store.admin;
-  const patch = (p) => { setDirty(true); setDraft((d) => ({ ...d, ...p })); };
-  const patchColor = (k, c) => { setDirty(true); setDraft((d) => ({ ...d, colors: { ...d.colors, [k]: c } })); };
+  const patch = (p) => setDraft((d) => ({ ...d, ...p, provisional: false }));
+  const setPart = (cat, name) => setDraft((d) => {
+    const parts = { ...d.parts, [cat]: name };
+    if (cat === 'full' && name) { delete parts.top; delete parts.bottom; }
+    if ((cat === 'top' || cat === 'bottom') && name) delete parts.full;
+    return { ...d, parts, provisional: false };
+  });
+  const setColor = (k, c) => setDraft((d) => ({ ...d, colors: { ...d.colors, [k]: c }, provisional: false }));
+  const setMorph = (neg, pos, v) => setDraft((d) => {
+    const morph = { ...d.morph };
+    if (neg) morph[neg] = Math.max(0, -v);
+    morph[pos] = Math.max(0, v);
+    return { ...d, morph };
+  });
+  const setGender = (g) => {
+    if (g === draft.gender) return;
+    // as peças são próprias de cada corpo: troca para o conjunto padrão do outro
+    const base = avatarFromName(player.name, g);
+    setDraft((d) => ({ ...d, gender: g, parts: base.parts, colors: { hair: d.colors.hair }, morph: {}, provisional: false }));
+  };
   const save = async () => {
     setSaving(true);
     try {
-      await store.saveAvatar(player.id, draft, code);
-      setDirty(false);
+      const thumb = await portrait({ ...draft, thumb: null }, { fresh: true, size: 256 });
+      await store.saveAvatar(player.id, { ...draft, thumb, provisional: false }, code);
       toast('Avatar salvo.', 'ok');
       go('jogadores');
     } catch (e) { handleError(e); } finally { setSaving(false); }
   };
-  const surprise = () => {
-    const pick = (a) => a[Math.floor(Math.random() * a.length)];
-    if (!lib) return;
-    const outfit = pick(lib.catalog.outfits).id;
-    patch({
-      outfit, head: 'human', preset: null, hair: pick(lib.catalog.hairs).id, hat: Math.random() < 0.25 ? pick(lib.catalog.hats).id : null, facial: null,
-      skin: pick(SKIN_TONES.slice(0, 7)), hairColor: pick(HAIR_COLORS), face: pick(['classic', 'lashes', 'chef', 'doctor']), shoes: pick(FABRIC_COLORS),
-      expression: pick(Object.keys(EXPRESSIONS)), colors: {},
-    });
-  };
-  const head = lib?.heads[draft.head];
-  const outfit = lib?.outfits[draft.outfit];
-  const hatEntry = draft.hat && lib?.hats[draft.hat];
+  const catalog = meta?.catalog || {};
+  const items = (cat) => (catalog[cat] || []).map((x) => [x.name, x.label]);
+  const morphGroups = (groups) => groups.map((g) => html`<${Group} key=${g} title=${g}>
+    ${SLIDERS[g].filter(([, , pos]) => meta?.morphs.includes(pos)).map(([label, neg, pos]) => html`<${Slider} key=${pos} label=${label} neg=${neg} pos=${pos} morph=${draft.morph} onChange=${setMorph} />`)}
+  <//>`);
 
   return html`<main class="editor">
     <section class="ed-stage">
       <div class="ed-canvas stage-host" ref=${host}>
-        ${!webglAvailable() && html`<div class="stage-loading">Este aparelho não oferece suporte a WebGL. O avatar pode ser editado, mas a prévia 3D não aparece.</div>`}
-        ${webglAvailable() && !lib && html`<div class="stage-loading">Carregando personagens…</div>`}
+        ${!webglAvailable() && html`<div class="stage-loading">Este aparelho não oferece suporte a WebGL: o avatar pode ser editado, mas a prévia 3D não aparece.</div>`}
+        ${webglAvailable() && loading && html`<div class="stage-loading">Carregando peças…</div>`}
       </div>
-      <div class="ed-who">
-        <span class="overline">Avatar de</span>
-        <h1>${player.name}</h1>
-        <p class="muted">Arraste para girar · role para aproximar</p>
+      <div class="ed-who"><span class="overline">Avatar de</span><h1>${player.name}</h1><p class="muted">Arraste para girar · role para aproximar · <a href="#/regulamento">créditos</a></p></div>
+      <div class="ed-cams">
+        ${[['face', 'Rosto'], ['bust', 'Busto'], ['body', 'Corpo']].map(([k, l]) => html`<button key=${k} class="btn sm" onClick=${() => stage.current?.focus(k)}>${l}</button>`)}
       </div>
     </section>
     <aside class="ed-panel glass">
       <div class="ed-tabs" role="tablist">
-        ${TABS.map(([k, label]) => html`<button key=${k} role="tab" aria-selected=${tab === k} class=${tab === k ? 'on' : ''} onClick=${() => setTab(k)}>${label}</button>`)}
+        ${TABS.map(([k, label]) => html`<button key=${k} role="tab" aria-selected=${tab === k} class=${tab === k ? 'on' : ''} onClick=${() => { setTab(k); stage.current?.focus(k === 'face' || k === 'hair' ? 'face' : k === 'clothes' || k === 'body' || k === 'pose' ? 'body' : 'bust'); }}>${label}</button>`)}
       </div>
       <div class="ed-body">
-        ${!lib && html`<div class="skeleton" style="height:240px;border-radius:16px"></div>`}
-        ${lib && tab === 'look' && html`
-          <${Group} title="Personagens do pack" hint="Combinações originais. Depois, ajuste o que quiser nas outras abas.">
-            <div class="options">${PRESETS.map((p) => html`<button key=${p.id} class=${'option ' + (draft.preset === p.id ? 'on' : '')} onClick=${() => { setDirty(true); setDraft({ ...presetToAvatar(p), pose: draft.pose, racket: draft.racket }); }}>${p.label}</button>`)}</div>
+        ${!meta && html`<div class="skeleton" style="height:240px;border-radius:16px"></div>`}
+        ${meta && tab === 'base' && html`
+          ${draft.provisional && html`<p class="notice">Este é um avatar provisório, sorteado pelo nome. Monte o seu e salve.</p>`}
+          <${Group} title="Corpo base"><${Options} items=${Object.entries(GENDERS)} value=${draft.gender} onChange=${setGender} /><//>
+          <${Group} title="Tom de pele" hint="Texturas reais de pele. Os traços do rosto ficam na aba Corpo, em Traços de origem.">
+            <${Options} items=${Object.entries(SKINS)} value=${draft.skin} onChange=${(v) => patch({ skin: v })} />
           <//>
-          <button class="btn" onClick=${surprise}>Surpreenda-me</button>`}
-        ${lib && tab === 'clothes' && html`
-          <${Group} title="Roupa"><${Options} items=${lib.catalog.outfits.map((o) => [o.id, o.label])} value=${draft.outfit} onChange=${(v) => patch({ outfit: v, preset: null })} /><//>
-          <${ColorSlots} entry=${outfit} entryKey=${draft.outfit} draft=${draft} patchColor=${patchColor} />
-          <${Group} title="Calçados" hint="Pintura dos pés do modelo: o pack não traz calçados como peças separadas.">
-            <${Swatches} label="Calçados" colors=${FABRIC_COLORS} value=${draft.shoes} onChange=${(c) => patch({ shoes: c })} />
-          <//>
-          <${Group} title="Escudo no peito"><${Options} none="Sem escudo" items=${Object.entries(ACCESSORIES.badge.options)} value=${draft.badge} onChange=${(v) => patch({ badge: v })} /><//>`}
-        ${lib && tab === 'head' && html`
-          <${Group} title="Tom de pele"><${Swatches} label="Tom de pele" colors=${SKIN_TONES} value=${draft.skin} onChange=${(c) => patch({ skin: c })} /><//>
-          <${Group} title="Tipo de cabeça"><${Options} items=${lib.catalog.heads.map((o) => [o.id, o.label])} value=${draft.head} onChange=${(v) => patch({ head: v })} /><//>
-          <${ColorSlots} entry=${head} entryKey=${'head:' + draft.head} draft=${draft} patchColor=${patchColor} />
-          <${Group} title="Formato" hint="Proporção da cabeça, aplicada no esqueleto. O pack não tem formas de rosto editáveis.">
-            <${Options} items=${Object.entries(HEAD_SHAPES).map(([k, v]) => [k, v.label])} value=${draft.headShape} onChange=${(v) => patch({ headShape: v })} />
-          <//>`}
-        ${lib && tab === 'hair' && (head?.noHair
-          ? html`<p class="notice">A cabeça "${head.label}" cobre o cabelo. Escolha outro tipo de cabeça para ver as opções.</p>`
-          : html`
-          <${Group} title="Cabelo"><${Options} none="Careca" items=${lib.catalog.hairs.map((o) => [o.id, o.label])} value=${draft.hair} onChange=${(v) => patch({ hair: v, preset: null })} /><//>
-          <${Group} title="Cor do cabelo"><${Swatches} label="Cor do cabelo" colors=${HAIR_COLORS} value=${draft.hairColor} onChange=${(c) => patch({ hairColor: c })} allowNone="Cor original" /><//>
-          <${Group} title="Barba e bigode"><${Options} none="Nenhum" items=${lib.catalog.facials.map((o) => [o.id, o.label])} value=${draft.facial} onChange=${(v) => patch({ facial: v })} /><//>`)}
-        ${lib && tab === 'face' && (head?.noFace || head?.lockFace
-          ? html`<p class="notice">A cabeça "${head.label}" já vem com rosto próprio.</p>`
-          : html`
-          <${Group} title="Olhos e sobrancelhas"><${Options} items=${lib.catalog.faces.filter((f) => !f.hidden).map((o) => [o.id, o.label])} value=${draft.face} onChange=${(v) => patch({ face: v })} /><//>
-          <${Group} title="Cor dos olhos"><${Swatches} label="Cor dos olhos" colors=${['#141414', '#fffff0', '#3b7bf5', '#2fa39a', '#6b4226']} value=${draft.eyeColor} onChange=${(c) => patch({ eyeColor: c })} allowNone="Automática pelo tom de pele" /><//>
-          <${Group} title="Cor das sobrancelhas"><${Swatches} label="Cor das sobrancelhas" colors=${HAIR_COLORS} value=${draft.browColor} onChange=${(c) => patch({ browColor: c })} allowNone="Igual ao cabelo" /><//>
-          <${Group} title="Expressão" hint="Movimento de olhos e sobrancelhas: o pack não traz expressões prontas.">
-            <${Options} items=${Object.entries(EXPRESSIONS).map(([k, v]) => [k, v.label])} value=${draft.expression} onChange=${(v) => patch({ expression: v })} />
-          <//>`)}
-        ${lib && tab === 'extras' && html`
-          ${head?.noHat ? html`<p class="notice">A cabeça "${head.label}" não aceita chapéu.</p>` : html`
-          <${Group} title="Chapéus e capacetes"><${Options} none="Nenhum" items=${lib.catalog.hats.map((o) => [o.id, o.label])} value=${draft.hat} onChange=${(v) => patch({ hat: v, preset: null })} /><//>
-          <${ColorSlots} entry=${hatEntry} entryKey=${'hat:' + draft.hat} draft=${draft} patchColor=${patchColor} />`}
-          ${!head?.noFace && html`<${Group} title="Óculos"><${Options} none="Sem óculos" items=${Object.entries(ACCESSORIES.glasses.options)} value=${draft.glasses} onChange=${(v) => patch({ glasses: v })} /><//>`}
-          <${Group} title="Munhequeira"><${Options} none="Sem munhequeira" items=${Object.entries(ACCESSORIES.wrist.options)} value=${draft.wrist} onChange=${(v) => patch({ wrist: v })} />
-            ${draft.wrist && html`<${Swatches} label="Cor da munhequeira" colors=${FABRIC_COLORS} value=${draft.colors.wrist || '#ffffff'} onChange=${(c) => patchColor('wrist', c)} />`}<//>`}
-        ${lib && tab === 'racket' && html`
-          <${Group} title="Raquete" hint="Modelo criado para este projeto: o pack não inclui raquetes.">
-            <${Options} items=${Object.entries(RACKETS).map(([k, v]) => [k, v.label])} value=${draft.racket?.style || 'classic'} onChange=${(v) => patch({ racket: { ...draft.racket, style: v } })} />
-          <//>
-          <${Group} title="Cor da borracha"><${Swatches} label="Cor da borracha" colors=${['#c0262d', '#0040c8', '#1f8a55', '#a23f96', '#d9772c', '#15171c']} value=${draft.racket?.color} onChange=${(c) => patch({ racket: { ...draft.racket, color: c } })} /><//>`}
-        ${lib && tab === 'pose' && html`
-          <${Group} title="Animações originais" hint="Toque para ver. A escolhida vira a pose do editor.">
+          <${Group} title="Altura"><label class="ed-slider"><span>${Math.round(draft.height * 175)} cm aprox.</span>
+            <input type="range" min="0.9" max="1.1" step="0.005" value=${draft.height} onInput=${(e) => patch({ height: +e.target.value })} /></label><//>`}
+        ${meta && tab === 'face' && morphGroups(FACE_GROUPS)}
+        ${meta && tab === 'body' && morphGroups(BODY_GROUPS)}
+        ${meta && tab === 'clothes' && ['full', 'top', 'bottom', 'shoes'].map((cat) => html`<${Group} key=${cat} title=${CATEGORIES.find((c) => c[0] === cat)[1]}>
+          <${Options} none=${OPTIONAL.has(cat) ? 'Nenhum' : null} items=${items(cat)} value=${draft.parts[cat] || null} onChange=${(v) => setPart(cat, v)} />
+          ${draft.parts[cat] && html`<${Swatches} label=${'Cor de ' + cat} colors=${CLOTH_COLORS} value=${draft.colors[cat]} onChange=${(c) => setColor(cat, c)} none="Cor original" />`}
+        <//>`)}
+        ${meta && tab === 'hair' && html`
+          <${Group} title="Cabelo"><${Options} none="Careca" items=${items('hair')} value=${draft.parts.hair || null} onChange=${(v) => setPart('hair', v)} /><//>
+          <${Group} title="Cor do cabelo, barba e sobrancelha"><${Swatches} label="Cor do cabelo" colors=${HAIR_COLORS} value=${draft.colors.hair} onChange=${(c) => setColor('hair', c)} /><//>
+          ${items('beard').length > 0 && html`<${Group} title="Barba e bigode"><${Options} none="Sem barba" items=${items('beard')} value=${draft.parts.beard || null} onChange=${(v) => setPart('beard', v)} /><//>`}`}
+        ${meta && tab === 'extras' && html`
+          <${Group} title="Óculos"><${Options} none="Sem óculos" items=${items('glasses')} value=${draft.parts.glasses || null} onChange=${(v) => setPart('glasses', v)} /><//>
+          <${Group} title="Chapéus"><${Options} none="Sem chapéu" items=${items('hat')} value=${draft.parts.hat || null} onChange=${(v) => setPart('hat', v)} /><//>
+          <${Group} title="Raquete"><${Options} items=${Object.entries(RACKETS)} value=${draft.racket.style} onChange=${(v) => patch({ racket: { ...draft.racket, style: v } })} />
+            <${Swatches} label="Cor da borracha" colors=${['#c0262d', '#0040c8', '#1f8a55', '#a23f96', '#15171c']} value=${draft.racket.color} onChange=${(c) => patch({ racket: { ...draft.racket, color: c } })} /><//>`}
+        ${meta && tab === 'pose' && html`
+          <${Group} title="Animações" hint="Toque para ver. A escolhida vira a pose do editor.">
             <${Options} items=${Object.entries(POSES)} value=${draft.pose} onChange=${(v) => { stage.current?.setPose(v); patch({ pose: v }); }} />
           <//>`}
       </div>
@@ -147,7 +137,7 @@ export function EditorPage({ id }) {
           <input class="input code-input" autocomplete="off" maxlength="6" value=${code} onInput=${(e) => setCode(e.target.value)} placeholder="ABC123" /></label>`}
         <div class="actions">
           <a class="btn ghost" href="#/jogadores">Voltar</a>
-          <button class="btn primary grow" disabled=${saving || (needsCode && code.trim().length < 6)} onClick=${save}>${saving ? 'Salvando…' : dirty ? 'Salvar avatar' : 'Salvar avatar'}</button>
+          <button class="btn primary grow" disabled=${saving || loading || (needsCode && code.trim().length < 6)} onClick=${save}>${saving ? 'Salvando…' : 'Salvar avatar'}</button>
         </div>
       </div>
     </aside>

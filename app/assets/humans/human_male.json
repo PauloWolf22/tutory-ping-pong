@@ -1,0 +1,372 @@
+{
+ "gender": "male",
+ "morphs": [
+  "body_heavy",
+  "body_thin",
+  "body_muscle",
+  "body_soft",
+  "race_african",
+  "race_asian",
+  "race_caucasian",
+  "age_older",
+  "face_round",
+  "face_square",
+  "face_oval",
+  "face_tri",
+  "jaw_narrow",
+  "jaw_wide",
+  "chin_out",
+  "chin_in",
+  "cheek_low",
+  "cheek_high",
+  "cheek_thin",
+  "cheek_full",
+  "eye_small",
+  "eye_big",
+  "eye_fold",
+  "eye_down",
+  "eye_up",
+  "nose_thin",
+  "nose_wide",
+  "nose_short",
+  "nose_long",
+  "nose_flat",
+  "nose_hump",
+  "nostril_narrow",
+  "nostril_wide",
+  "mouth_narrow",
+  "mouth_wide",
+  "lips_thin",
+  "lips_full",
+  "brow_down",
+  "brow_up",
+  "brow_angle_down",
+  "brow_angle_up",
+  "neck_thin",
+  "neck_wide",
+  "smile",
+  "brows_raised",
+  "brows_angry"
+ ],
+ "catalog": {
+  "hair": [
+   {
+    "name": "short01",
+    "label": "Curto 1",
+    "size": 1308120
+   },
+   {
+    "name": "short02",
+    "label": "Curto 2",
+    "size": 802800
+   },
+   {
+    "name": "short03",
+    "label": "Curto 3",
+    "size": 506172
+   },
+   {
+    "name": "short04",
+    "label": "Curto 4",
+    "size": 536232
+   },
+   {
+    "name": "elvs_grump_hair",
+    "label": "Bagunçado",
+    "size": 3245000
+   },
+   {
+    "name": "afro01",
+    "label": "Black",
+    "size": 1171696
+   },
+   {
+    "name": "elvs_micky_afro",
+    "label": "Black curto",
+    "size": 1012584
+   },
+   {
+    "name": "elvs_braided_rows",
+    "label": "Nagô",
+    "size": 5647944
+   },
+   {
+    "name": "punkduck_alpha7_curly",
+    "label": "Cachos longos",
+    "size": 3158064
+   },
+   {
+    "name": "long01",
+    "label": "Longo",
+    "size": 1175156
+   },
+   {
+    "name": "punkduck_alpha7_long",
+    "label": "Longo liso",
+    "size": 1426576
+   },
+   {
+    "name": "elvs_wavy_bob",
+    "label": "Chanel ondulado",
+    "size": 876912
+   },
+   {
+    "name": "bob01",
+    "label": "Chanel 1",
+    "size": 1499380
+   },
+   {
+    "name": "bob02",
+    "label": "Chanel 2",
+    "size": 916636
+   },
+   {
+    "name": "ponytail01",
+    "label": "Rabo de cavalo",
+    "size": 1578744
+   },
+   {
+    "name": "braid01",
+    "label": "Trança",
+    "size": 1546112
+   }
+  ],
+  "full": [
+   {
+    "name": "male_casualsuit04",
+    "label": "Camiseta e jeans",
+    "size": 755576,
+    "bitA": 0
+   },
+   {
+    "name": "male_casualsuit01",
+    "label": "Casual 1",
+    "size": 3297504,
+    "bitA": 1
+   },
+   {
+    "name": "male_casualsuit02",
+    "label": "Casual 2",
+    "size": 919160,
+    "bitA": 2
+   },
+   {
+    "name": "male_casualsuit03",
+    "label": "Casual 3",
+    "size": 1207556,
+    "bitA": 3
+   },
+   {
+    "name": "male_casualsuit05",
+    "label": "Casual 4",
+    "size": 1370020,
+    "bitA": 4
+   },
+   {
+    "name": "male_casualsuit06",
+    "label": "Casual 5",
+    "size": 1507924,
+    "bitA": 5
+   },
+   {
+    "name": "male_elegantsuit01",
+    "label": "Elegante",
+    "size": 3016528,
+    "bitA": 6
+   },
+   {
+    "name": "male_worksuit01",
+    "label": "Trabalho",
+    "size": 1538008,
+    "bitA": 7
+   },
+   {
+    "name": "toigo_male_suit_3",
+    "label": "Terno",
+    "size": 3632716,
+    "bitA": 8
+   },
+   {
+    "name": "toigo_male_double-breasted_suit",
+    "label": "Terno trespassado",
+    "size": 2443748,
+    "bitA": 9
+   },
+   {
+    "name": "toigo_male_suit_tie_and_jacket",
+    "label": "Terno e gravata",
+    "size": 3405820,
+    "bitA": 10
+   }
+  ],
+  "top": [
+   {
+    "name": "elvs_crude_t-shirt_male",
+    "label": "Camiseta",
+    "size": 383192,
+    "bitA": 11
+   },
+   {
+    "name": "namuhekam_male_polo_shirt",
+    "label": "Polo",
+    "size": 683220,
+    "bitA": 12
+   },
+   {
+    "name": "toigo_basic_tucked_t-shirt",
+    "label": "Camiseta justa",
+    "size": 568408,
+    "bitA": 13
+   },
+   {
+    "name": "toigo_fisherman_sweater",
+    "label": "Suéter",
+    "size": 1006636,
+    "bitA": 14
+   }
+  ],
+  "bottom": [
+   {
+    "name": "cortu_cargo_pants",
+    "label": "Calça cargo",
+    "size": 206772,
+    "bitA": 15
+   },
+   {
+    "name": "cortu_jeans_shorts",
+    "label": "Bermuda jeans",
+    "size": 253888,
+    "bitA": 16
+   },
+   {
+    "name": "toigo_wool_pants",
+    "label": "Calça social",
+    "size": 613208,
+    "bitA": 17
+   }
+  ],
+  "shoes": [
+   {
+    "name": "shoes01",
+    "label": "Tênis 1",
+    "size": 649620,
+    "bitB": 0
+   },
+   {
+    "name": "shoes02",
+    "label": "Tênis 2",
+    "size": 535916,
+    "bitB": 1
+   },
+   {
+    "name": "shoes03",
+    "label": "Calçado 3",
+    "size": 679832,
+    "bitB": 2
+   },
+   {
+    "name": "shoes04",
+    "label": "Calçado 4",
+    "size": 616440,
+    "bitB": 3
+   },
+   {
+    "name": "shoes05",
+    "label": "Calçado 5",
+    "size": 555396,
+    "bitB": 4
+   },
+   {
+    "name": "shoes06",
+    "label": "Calçado 6",
+    "size": 584672,
+    "bitB": 5
+   },
+   {
+    "name": "toigo_ankle_boots_male",
+    "label": "Bota curta",
+    "size": 1081728,
+    "bitB": 6
+   }
+  ],
+  "beard": [
+   {
+    "name": "wdg_scruffy_beard",
+    "label": "Barba rala",
+    "size": 1217676
+   },
+   {
+    "name": "elvs_scruffy_beard1",
+    "label": "Barba por fazer",
+    "size": 1288164
+   },
+   {
+    "name": "grinsegold_full_beard",
+    "label": "Barba cheia",
+    "size": 345252
+   },
+   {
+    "name": "rehmanpolanski_beard_viking",
+    "label": "Barba longa",
+    "size": 3229820
+   },
+   {
+    "name": "grinsegold_moustache",
+    "label": "Bigode",
+    "size": 101092
+   },
+   {
+    "name": "rehmanpolanski_moustache_viking",
+    "label": "Bigode longo",
+    "size": 912668
+   }
+  ],
+  "glasses": [
+   {
+    "name": "kwnet_at_optical_glasses",
+    "label": "Grau",
+    "size": 1169272
+   },
+   {
+    "name": "frankyaye_glasses_library_male",
+    "label": "Redondo",
+    "size": 560188
+   },
+   {
+    "name": "spamrakuen_sagerfrogs_glasses_01",
+    "label": "Armação fina",
+    "size": 618912
+   }
+  ],
+  "hat": [
+   {
+    "name": "jujube_newsboy_cap",
+    "label": "Boina",
+    "size": 179172
+   },
+   {
+    "name": "fedora01",
+    "label": "Fedora",
+    "size": 440780
+   },
+   {
+    "name": "aethelraed_unraed_cloche_hat",
+    "label": "Chapéu cloche",
+    "size": 293252
+   }
+  ]
+ },
+ "skins": {
+  "clara": "skin_male_clara.jpg",
+  "oriental": "skin_male_oriental.jpg",
+  "negra": "skin_male_negra.jpg"
+ },
+ "defaults": {
+  "hair": "short02",
+  "full": "male_casualsuit04",
+  "shoes": "shoes01"
+ },
+ "baseSize": 6889876,
+ "skipped": [],
+ "vertices": 13380
+}

@@ -1,0 +1,365 @@
+{
+ "gender": "female",
+ "morphs": [
+  "body_heavy",
+  "body_thin",
+  "body_muscle",
+  "body_soft",
+  "race_african",
+  "race_asian",
+  "race_caucasian",
+  "age_older",
+  "face_round",
+  "face_square",
+  "face_oval",
+  "face_tri",
+  "jaw_narrow",
+  "jaw_wide",
+  "chin_out",
+  "chin_in",
+  "cheek_low",
+  "cheek_high",
+  "cheek_thin",
+  "cheek_full",
+  "eye_small",
+  "eye_big",
+  "eye_fold",
+  "eye_down",
+  "eye_up",
+  "nose_thin",
+  "nose_wide",
+  "nose_short",
+  "nose_long",
+  "nose_flat",
+  "nose_hump",
+  "nostril_narrow",
+  "nostril_wide",
+  "mouth_narrow",
+  "mouth_wide",
+  "lips_thin",
+  "lips_full",
+  "brow_down",
+  "brow_up",
+  "brow_angle_down",
+  "brow_angle_up",
+  "neck_thin",
+  "neck_wide",
+  "smile",
+  "brows_raised",
+  "brows_angry"
+ ],
+ "catalog": {
+  "hair": [
+   {
+    "name": "short01",
+    "label": "Curto 1",
+    "size": 1120080
+   },
+   {
+    "name": "short02",
+    "label": "Curto 2",
+    "size": 697264
+   },
+   {
+    "name": "short03",
+    "label": "Curto 3",
+    "size": 489720
+   },
+   {
+    "name": "short04",
+    "label": "Curto 4",
+    "size": 472540
+   },
+   {
+    "name": "elvs_grump_hair",
+    "label": "Bagunçado",
+    "size": 3474420
+   },
+   {
+    "name": "afro01",
+    "label": "Black",
+    "size": 1045456
+   },
+   {
+    "name": "elvs_micky_afro",
+    "label": "Black curto",
+    "size": 989560
+   },
+   {
+    "name": "elvs_braided_rows",
+    "label": "Nagô",
+    "size": 5677568
+   },
+   {
+    "name": "punkduck_alpha7_curly",
+    "label": "Cachos longos",
+    "size": 3140944
+   },
+   {
+    "name": "long01",
+    "label": "Longo",
+    "size": 1248152
+   },
+   {
+    "name": "punkduck_alpha7_long",
+    "label": "Longo liso",
+    "size": 1415152
+   },
+   {
+    "name": "elvs_wavy_bob",
+    "label": "Chanel ondulado",
+    "size": 947920
+   },
+   {
+    "name": "bob01",
+    "label": "Chanel 1",
+    "size": 1601856
+   },
+   {
+    "name": "bob02",
+    "label": "Chanel 2",
+    "size": 875224
+   },
+   {
+    "name": "ponytail01",
+    "label": "Rabo de cavalo",
+    "size": 1274552
+   },
+   {
+    "name": "braid01",
+    "label": "Trança",
+    "size": 1649360
+   }
+  ],
+  "full": [
+   {
+    "name": "female_sportsuit01",
+    "label": "Esportivo",
+    "size": 766540,
+    "bitA": 0
+   },
+   {
+    "name": "female_casualsuit01",
+    "label": "Casual 1",
+    "size": 892696,
+    "bitA": 1
+   },
+   {
+    "name": "female_casualsuit02",
+    "label": "Casual 2",
+    "size": 1264616,
+    "bitA": 2
+   },
+   {
+    "name": "female_elegantsuit01",
+    "label": "Elegante",
+    "size": 977788,
+    "bitA": 3
+   },
+   {
+    "name": "toigo_female_suit",
+    "label": "Terninho",
+    "size": 4456396,
+    "bitA": 4
+   },
+   {
+    "name": "toigo_female_double-breasted_suit",
+    "label": "Terninho trespassado",
+    "size": 2476340,
+    "bitA": 5
+   },
+   {
+    "name": "toigo_halter_dress_knee_length",
+    "label": "Vestido frente única",
+    "size": 1038840,
+    "bitA": 6
+   },
+   {
+    "name": "toigo_shift_dress",
+    "label": "Vestido reto",
+    "size": 2662716,
+    "bitA": 7
+   },
+   {
+    "name": "toigo_cut_out_dress",
+    "label": "Vestido recortado",
+    "size": 1504728,
+    "bitA": 8
+   },
+   {
+    "name": "toigo_dress_with_tiered_skirt",
+    "label": "Vestido em camadas",
+    "size": 4265460,
+    "bitA": 9
+   },
+   {
+    "name": "aethelraed_flapper_dress",
+    "label": "Vestido melindrosa",
+    "size": 2569940,
+    "bitA": 10
+   },
+   {
+    "name": "mindfront_kimono",
+    "label": "Quimono",
+    "size": 1409640,
+    "bitA": 11
+   }
+  ],
+  "top": [
+   {
+    "name": "joepal_crude_t-shirt_female",
+    "label": "Camiseta",
+    "size": 410800,
+    "bitA": 12
+   },
+   {
+    "name": "namuhekam_male_polo_shirt",
+    "label": "Polo",
+    "size": 686344,
+    "bitA": 13
+   },
+   {
+    "name": "toigo_camisole_top",
+    "label": "Regata",
+    "size": 1774512,
+    "bitA": 14
+   },
+   {
+    "name": "toigo_fisherman_sweater",
+    "label": "Suéter",
+    "size": 1006020,
+    "bitA": 15
+   }
+  ],
+  "bottom": [
+   {
+    "name": "cortu_cargo_pants",
+    "label": "Calça cargo",
+    "size": 206820,
+    "bitA": 16
+   },
+   {
+    "name": "cortu_jeans_shorts",
+    "label": "Bermuda jeans",
+    "size": 253932,
+    "bitA": 17
+   },
+   {
+    "name": "toigo_wool_pants",
+    "label": "Calça social",
+    "size": 613264,
+    "bitA": 18
+   },
+   {
+    "name": "frankyaye_mini_skirt_01",
+    "label": "Minissaia",
+    "size": 366548,
+    "bitA": 19
+   },
+   {
+    "name": "toigo_long_full_skirt",
+    "label": "Saia longa",
+    "size": 1428804,
+    "bitA": 20
+   }
+  ],
+  "shoes": [
+   {
+    "name": "shoes03",
+    "label": "Calçado 1",
+    "size": 608844,
+    "bitB": 0
+   },
+   {
+    "name": "shoes01",
+    "label": "Tênis 1",
+    "size": 598872,
+    "bitB": 1
+   },
+   {
+    "name": "shoes02",
+    "label": "Tênis 2",
+    "size": 487836,
+    "bitB": 2
+   },
+   {
+    "name": "shoes04",
+    "label": "Calçado 2",
+    "size": 565692,
+    "bitB": 3
+   },
+   {
+    "name": "shoes05",
+    "label": "Calçado 3",
+    "size": 507316,
+    "bitB": 4
+   },
+   {
+    "name": "shoes06",
+    "label": "Calçado 4",
+    "size": 536592,
+    "bitB": 5
+   },
+   {
+    "name": "toigo_ankle_boots_female",
+    "label": "Bota curta",
+    "size": 972880,
+    "bitB": 6
+   },
+   {
+    "name": "toigo_ballet_flats",
+    "label": "Sapatilha de balé",
+    "size": 1724508,
+    "bitB": 8
+   }
+  ],
+  "beard": [],
+  "glasses": [
+   {
+    "name": "kwnet_at_optical_glasses",
+    "label": "Grau",
+    "size": 1169308
+   },
+   {
+    "name": "frankyaye_glasses_library_male",
+    "label": "Redondo",
+    "size": 558024
+   },
+   {
+    "name": "spamrakuen_sagerfrogs_glasses_01",
+    "label": "Armação fina",
+    "size": 618956
+   }
+  ],
+  "hat": [
+   {
+    "name": "jujube_newsboy_cap",
+    "label": "Boina",
+    "size": 169384
+   },
+   {
+    "name": "fedora01",
+    "label": "Fedora",
+    "size": 427864
+   },
+   {
+    "name": "aethelraed_unraed_cloche_hat",
+    "label": "Chapéu cloche",
+    "size": 261088
+   }
+  ]
+ },
+ "skins": {
+  "clara": "skin_female_clara.jpg",
+  "oriental": "skin_female_oriental.jpg",
+  "negra": "skin_female_negra.jpg"
+ },
+ "defaults": {
+  "hair": "long01",
+  "full": "female_sportsuit01",
+  "shoes": "shoes03"
+ },
+ "baseSize": 7107568,
+ "skipped": [],
+ "vertices": 13380
+}

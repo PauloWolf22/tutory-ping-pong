@@ -56,7 +56,7 @@ Com o servidor ligado:
 - `http://localhost:8787/tests/engine.test.html`: 52 testes do motor (sorteio, BYE, cascata de correção, pontuação, estatísticas).
 - `http://localhost:8787/tests/cloud.test.html`: 13 testes do fluxo com Supabase, usando banco simulado.
 - `http://localhost:8787/tests/football.test.html`: 27 testes do rodízio do futebol, de 10 a 30 jogadores.
-- `http://localhost:8787/tests/presets.html`: todos os personagens remontados. Com `?acc=1`, acessórios, expressões e formatos.
+- `http://localhost:8787/tests/avatar-poc.html`: catálogo dos avatares realistas (roupas, cabelos, tons de pele e ajustes).
 
 ## Documentação
 

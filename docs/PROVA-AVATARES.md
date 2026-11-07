@@ -10,7 +10,7 @@
 
 - **Base, peles, olhos, cabelos e roupas do sistema:** pacote `makehuman_system_assets`, CC0.
 - **Roupas, calçados, óculos, chapéus e barbas:** pacotes `shirts01`, `pants01`, `suits01`, `dress01`, `skirts01`, `shoes01`, `glasses01`, `hats01` e `bodyparts05`, CC0.
-- **CC-BY:** `hair02`, `hair03` e `bodyparts06`. Pedem crédito aos autores das peças usadas, identificados pelo prefixo do nome: elvs, punkduck e grinsegold. O crédito precisa aparecer no app antes da publicação.
+- **CC-BY:** 9 peças, conferidas no catálogo oficial dos pacotes (`mpfb/data/packs/*.json`): Elvaerwyn (wavy bob, braided rows, grump hair, micky afro, scruffy beard), punkduck (alpha7 curly e long) e grinsegold (barba cheia e bigode). O crédito está no app, em Regulamento > Créditos dos avatares. Alguns `.mhclo` trazem "AGPL3" no cabeçalho: é o texto padrão antigo do MakeClothes; vale a licença publicada no catálogo (CC0 nesses casos).
 
 **Peças retiradas por peso:** `o4saken_curly01` (55 MB), `elvs_short_side_do` (12 MB) e `culturalibre_male_boots` (5 MB).
 
