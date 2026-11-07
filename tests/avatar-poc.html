@@ -4,24 +4,29 @@
 <script type="importmap">{ "imports": { "three": "../js/vendor/three/three.module.min.js" } }</script>
 <style>
 body{overflow:hidden}
-.poc{display:grid;grid-template-columns:minmax(0,1fr) 360px;height:100dvh}
-#view{position:relative;min-width:0;background:radial-gradient(70% 70% at 50% 42%,rgba(0,64,200,.24),transparent),#04070f}
+.poc{display:grid;grid-template-columns:minmax(0,1fr) 380px;height:100dvh}
+#view{position:relative;min-width:0;background:radial-gradient(70% 70% at 50% 42%,#27304a,#0a0f1c 75%)}
 #view canvas{position:absolute;inset:0;width:100%!important;height:100%!important;cursor:grab;touch-action:none}
 .info{position:absolute;left:18px;top:14px;pointer-events:none}
 .info h1{font-size:24px}.info p{margin:2px 0;color:var(--muted);font-size:12.5px}
-.panel{overflow-y:auto;padding:14px 16px;background:rgba(10,16,30,.9);border-left:1px solid var(--line);display:grid;align-content:start;gap:14px}
+.cams{position:absolute;left:18px;bottom:14px;display:flex;gap:5px}
+.panel{overflow-y:auto;padding:14px 16px;background:rgba(10,16,30,.92);border-left:1px solid var(--line);display:grid;align-content:start;gap:14px}
 .panel h2{font-size:13px;font-family:var(--font);font-weight:700;color:var(--ice);margin-bottom:6px}
-.row{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;font-size:12.5px;color:var(--muted);min-height:26px}
+.row{display:grid;grid-template-columns:104px 1fr;gap:8px;align-items:center;font-size:12.5px;color:var(--muted);min-height:26px}
 .row input{width:100%;accent-color:var(--beam)}
 .opts{display:flex;flex-wrap:wrap;gap:5px}
-.opt{padding:6px 11px;min-height:34px;border-radius:10px;background:var(--glass-hi);border:1px solid var(--line);color:var(--ice);font-size:12.5px;font-weight:600;cursor:pointer}
+.opt{padding:6px 10px;min-height:32px;border-radius:10px;background:var(--glass-hi);border:1px solid var(--line);color:var(--ice);font-size:12px;font-weight:600;cursor:pointer}
 .opt.on{background:rgba(59,123,245,.26);border-color:var(--beam);color:#fff}
-.sw{width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0}
-.sw.on{box-shadow:0 0 0 2px #04070f,0 0 0 4px var(--beam-soft)}
-@media(max-width:800px){body{overflow:auto}.poc{grid-template-columns:1fr;grid-template-rows:56dvh auto;height:auto}.panel{border-left:0}}
+.opt.busy{opacity:.5}
+.sw{width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0}
+.sws{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+details summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ice);padding:2px 0}
+details[open] summary{margin-bottom:6px}
+@media(max-width:800px){body{overflow:auto}.poc{grid-template-columns:1fr;grid-template-rows:58dvh auto;height:auto}.panel{border-left:0}}
 </style></head>
 <body><div class="poc">
-  <div id="view"><div class="info"><h1>Prova de avatar realista</h1><p id="stat">Carregando…</p><p>Arraste para girar · role para aproximar</p></div></div>
+  <div id="view"><div class="info"><h1>Prova de avatar realista</h1><p id="stat">Carregando…</p><p>Arraste para girar · role para aproximar</p></div>
+    <div class="cams"><button class="opt" data-cam="face">Rosto</button><button class="opt" data-cam="bust">Busto</button><button class="opt" data-cam="body">Corpo</button></div></div>
   <aside class="panel" id="panel"></aside>
 </div>
 <script type="module">
@@ -29,75 +34,60 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../js/vendor/three/GLTFLoader.js';
 import { OrbitControls } from '../js/vendor/three/OrbitControls.js';
 import { RoomEnvironment } from '../js/vendor/three/RoomEnvironment.js';
+import { skinMaterial, eyeMaterial, hairMaterial, studioLights } from '../js/three/realism.js';
 
 const BASE = '../assets/avatars-poc/';
 const q = new URLSearchParams(location.search);
 const view = document.getElementById('view'), panel = document.getElementById('panel'), stat = document.getElementById('stat');
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 0.92;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 view.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const pm = new THREE.PMREMGenerator(renderer);
 scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.42;
+scene.environmentIntensity = 0.55;
 const camera = new THREE.PerspectiveCamera(26, 1, 0.05, 100);
-camera.position.set(0.5, 1.45, 4.2);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 1.0, 0);
-Object.assign(controls, { enablePan: false, enableDamping: true, minDistance: 0.45, maxDistance: 8 });
-const key = new THREE.DirectionalLight(0xfff4e8, 2.1); key.position.set(1.8, 3.4, 3.2); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
-Object.assign(key.shadow.camera, { left: -1.5, right: 1.5, top: 2.2, bottom: -0.2, near: 0.5, far: 9 });
-const rim = new THREE.DirectionalLight(0x5f97ff, 2.6); rim.position.set(-3, 2.5, -2.6);
-const fill = new THREE.DirectionalLight(0xbfd4ff, 0.55); fill.position.set(-2.5, 1, 2.5);
-scene.add(key, rim, fill, new THREE.HemisphereLight(0xdfe9ff, 0x303a50, 0.55));
-const floor = new THREE.Mesh(new THREE.CircleGeometry(4, 64), new THREE.ShadowMaterial({ opacity: 0.5 }));
+Object.assign(controls, { enablePan: false, enableDamping: true, minDistance: 0.35, maxDistance: 8 });
+const CAMS = { face: [[0.3, 1.66, 1.3], [0, 1.6, 0]], bust: [[0.45, 1.55, 2.2], [0, 1.38, 0]], body: [[0.7, 1.25, 4.6], [0, 0.92, 0]] };
+const setCam = (k) => { camera.position.set(...CAMS[k][0]); controls.target.set(...CAMS[k][1]); controls.update(); };
+setCam(q.get('cam') || 'bust');
+document.querySelectorAll('[data-cam]').forEach((b) => { b.onclick = () => setCam(b.dataset.cam); });
+studioLights(scene);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(4, 64), new THREE.ShadowMaterial({ opacity: 0.45 }));
 floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 const resize = () => { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
 new ResizeObserver(resize).observe(view); resize();
 
 const SLIDERS = {
-  'Rosto': [['Formato redondo', null, 'face_round'], ['Quadrado', null, 'face_square'], ['Oval', null, 'face_oval'], ['Triangular', null, 'face_tri'], ['Queixo largura', 'jaw_narrow', 'jaw_wide'], ['Queixo saliente', 'chin_in', 'chin_out'], ['Maçã do rosto', 'cheek_low', 'cheek_high'], ['Bochecha', 'cheek_thin', 'cheek_full']],
-  'Olhos e sobrancelhas': [['Tamanho do olho', 'eye_small', 'eye_big'], ['Canto do olho', 'eye_down', 'eye_up'], ['Prega do olho', null, 'eye_fold'], ['Altura da sobrancelha', 'brow_down', 'brow_up'], ['Ângulo da sobrancelha', 'brow_angle_down', 'brow_angle_up']],
+  'Rosto': [['Redondo', null, 'face_round'], ['Quadrado', null, 'face_square'], ['Oval', null, 'face_oval'], ['Triangular', null, 'face_tri'], ['Largura do queixo', 'jaw_narrow', 'jaw_wide'], ['Queixo saliente', 'chin_in', 'chin_out'], ['Maçã do rosto', 'cheek_low', 'cheek_high'], ['Bochecha', 'cheek_thin', 'cheek_full']],
+  'Olhos e sobrancelhas': [['Tamanho do olho', 'eye_small', 'eye_big'], ['Canto do olho', 'eye_down', 'eye_up'], ['Prega do olho', null, 'eye_fold'], ['Altura sobrancelha', 'brow_down', 'brow_up'], ['Ângulo sobrancelha', 'brow_angle_down', 'brow_angle_up']],
   'Nariz e boca': [['Largura do nariz', 'nose_thin', 'nose_wide'], ['Comprimento', 'nose_short', 'nose_long'], ['Dorso', 'nose_flat', 'nose_hump'], ['Narinas', 'nostril_narrow', 'nostril_wide'], ['Largura da boca', 'mouth_narrow', 'mouth_wide'], ['Lábios', 'lips_thin', 'lips_full']],
   'Corpo': [['Peso', 'body_thin', 'body_heavy'], ['Músculo', 'body_soft', 'body_muscle'], ['Pescoço', 'neck_thin', 'neck_wide'], ['Idade', null, 'age_older']],
   'Traços de origem': [['Africana', null, 'race_african'], ['Asiática', null, 'race_asian'], ['Europeia', null, 'race_caucasian']],
-  'Expressão': [['Sorriso', null, 'smile'], ['Sobrancelhas erguidas', null, 'brows_raised'], ['Sobrancelhas franzidas', null, 'brows_angry']],
+  'Expressão': [['Sorriso', null, 'smile'], ['Sobrancelha erguida', null, 'brows_raised'], ['Sobrancelha franzida', null, 'brows_angry']],
 };
-const HAIR_LABEL = { short01: 'Curto 1', short02: 'Curto 2', short03: 'Curto 3', short04: 'Curto 4', afro01: 'Black', long01: 'Longo', bob01: 'Chanel 1', bob02: 'Chanel 2', ponytail01: 'Rabo de cavalo', braid01: 'Trança' };
+const CATS = [['full', 'Conjuntos e vestidos'], ['top', 'Parte de cima'], ['bottom', 'Parte de baixo'], ['shoes', 'Calçados'], ['hair', 'Cabelo'], ['beard', 'Barba e bigode'], ['glasses', 'Óculos'], ['hat', 'Chapéus']];
+const OPTIONAL = new Set(['top', 'bottom', 'beard', 'glasses', 'hat', 'hair', 'full']);
 const SKIN_LABEL = { clara: 'Clara', oriental: 'Média', negra: 'Negra' };
-const HAIR_COLORS = ['#141010', '#3a2416', '#7a4a24', '#c29a58', '#a33', '#bdbdbd'];
-// Cor de cabelo real: usa só a luminosidade da textura, para o tom escolhido não virar preto ao multiplicar.
-const colorableHair = (mat) => {
-  mat.onBeforeCompile = (s) => {
-    s.fragmentShader = s.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
-      float hairLuma = dot(sampledDiffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-      diffuseColor.rgb = diffuse * clamp(hairLuma * 3.2, 0.12, 1.5);`);
-  };
-  mat.customProgramCacheKey = () => 'hair';
-  mat.needsUpdate = true;
-};
-const loader = new GLTFLoader();
-const texLoader = new THREE.TextureLoader();
-let root = null, meta = null, meshes = [], mixTick = 0, arms = [];
-const state = { morph: {}, hair: null, height: 1, tint: '#ffffff' };
+const HAIR_COLORS = ['#141010', '#3a2416', '#7a4a24', '#c29a58', '#a33', '#c9c9c9', '#2f5fd0'];
+const CLOTH_COLORS = ['#ffffff', '#1c2230', '#0040c8', '#3b7bf5', '#c0262d', '#3f9b5d', '#d8b13a', '#a23f96'];
+const loader = new GLTFLoader(), texLoader = new THREE.TextureLoader();
+let root = null, armature = null, meta = null, body = null, meshes = [], mainBones = new Map(), maskA = null, maskB = null, baseIndex = null;
+let gender = q.get('g') || 'male', hairTint = '#3a2416', downloaded = 0;
+const state = { morph: {}, sel: {} };
+const partCache = new Map();
 
-function isHair(n) { return /^hair_/i.test(n); }
-function setMorph(name, v) {
-  state.morph[name] = v;
-  for (const m of meshes) {
-    const i = m.morphTargetDictionary?.[name];
-    if (i !== undefined) m.morphTargetInfluences[i] = v;
-  }
-}
-function bipolar(neg, pos, v) { if (neg) setMorph(neg, Math.max(0, -v)); setMorph(pos, Math.max(0, v)); }
+function setMorphOn(m, name, v) { const i = m.morphTargetDictionary?.[name]; if (i !== undefined) m.morphTargetInfluences[i] = v; }
+function setMorph(name, v) { state.morph[name] = v; meshes.forEach((m) => setMorphOn(m, name, v)); }
+const bipolar = (neg, pos, v) => { if (neg) setMorph(neg, Math.max(0, -v)); setMorph(pos, Math.max(0, v)); };
 
 function poseRelaxed() {
-  // o esqueleto nasce de braços abertos: aponta cada osso para a direção desejada, sem depender de animação
-  const bone = (n) => { let b = null; root.traverse((o) => { if (o.isBone && o.name.toLowerCase() === n) b = o; }); return b; };
+  const bone = (n) => mainBones.get(n);
   const aim = (name, childName, dir) => {
     const b = bone(name), c = bone(childName);
     if (!b || !c) return;
@@ -111,111 +101,164 @@ function poseRelaxed() {
   aim('upperarm_r', 'lowerarm_r', new THREE.Vector3(-0.2, -1, -0.02));
   aim('lowerarm_l', 'hand_l', new THREE.Vector3(0.1, -1, 0.22));
   aim('lowerarm_r', 'hand_r', new THREE.Vector3(-0.1, -1, 0.22));
-  arms = [bone('spine_02')].filter(Boolean);
 }
 
-async function load(gender) {
-  if (root) { scene.remove(root); renderer.renderLists.dispose(); }
-  stat.textContent = 'Carregando…';
+function dressMesh(o, cat) {
+  o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;
+  const std = o.material;
+  if (o.name === 'Human') o.material = skinMaterial(std);
+  else if (/low-poly/.test(o.name)) o.material = eyeMaterial(std);
+  else if (/brow|lash/.test(o.name)) { std.transparent = true; std.depthWrite = false; std.alphaTest = 0.05; }
+  else if (/teeth/.test(o.name)) { std.transparent = false; std.depthWrite = true; }
+  else if (cat === 'hair' || cat === 'beard') { o.material = hairMaterial(std, hairTint); o.receiveShadow = false; }
+  else if (cat === 'glasses') { std.transparent = true; std.depthWrite = false; o.castShadow = false; }
+  else { std.transparent = false; std.depthWrite = true; std.alphaTest = 0.3; std.side = THREE.DoubleSide; std.roughness = Math.max(std.roughness, 0.8); }
+}
+
+async function loadBase() {
+  meshes = []; state.sel = {}; partCache.clear(); mainBones = new Map(); downloaded = 0;
+  if (root) scene.remove(root);
   const t0 = performance.now();
+  stat.textContent = 'Carregando…';
   meta = await fetch(`${BASE}human_${gender}.json`).then((r) => r.json());
-  const gltf = await loader.loadAsync(`${BASE}human_${gender}.glb`);
-  root = gltf.scene; meshes = []; sb = null; rest = null;
-  root.traverse((o) => {
-    if (!o.isMesh) return;
-    o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;
-    meshes.push(o);
-    if (isHair(o.name)) {
-      o.material.alphaTest = 0.45; o.material.transparent = false; o.material.side = THREE.DoubleSide; o.material.roughness = 0.6;
-      o.receiveShadow = false; // sombra nas mechas vira manchas
-      colorableHair(o.material); o.material.color.set('#3a2416');
-    } else if (/brow|lash/i.test(o.name)) {
-      o.material.transparent = true; o.material.depthWrite = false; o.material.alphaTest = 0.05;
-    } else {
-      // pele, olhos, dentes e roupa são opacos: como transparentes, os olhos apareciam por cima do rosto
-      o.material.transparent = false; o.material.depthWrite = true; o.material.alphaTest = 0; o.material.side = THREE.FrontSide;
-    }
-  });
+  const gltf = await loader.loadAsync(`${BASE}${gender}/base.glb`);
+  root = gltf.scene;
+  root.traverse((o) => { if (o.isBone) mainBones.set(o.name.toLowerCase(), o); });
+  root.traverse((o) => { if (o.isMesh) { dressMesh(o); meshes.push(o); } });
+  body = meshes.find((m) => m.name === 'Human');
+  armature = body.parent;
+  maskA = body.geometry.attributes._maska; maskB = body.geometry.attributes._maskb;
+  baseIndex = body.geometry.index.array.slice();
   scene.add(root);
   poseRelaxed();
-  buildPanel(gender);
-  const size = await fetch(`${BASE}human_${gender}.glb`, { method: 'HEAD' }).then((r) => +r.headers.get('content-length'));
-  const tris = meshes.reduce((n, m) => n + (m.geometry.index ? m.geometry.index.count / 3 : 0), 0);
-  stat.textContent = `${(size / 1e6).toFixed(1)} MB · ${meshes.length} peças · carregou em ${Math.round(performance.now() - t0)} ms`;
-  setHair(meta.hairs.includes(q.get('hair')) ? q.get('hair') : (gender === 'male' ? 'short02' : 'long01'));
-  setSkin(q.get('skin') || 'clara');
-  window.__poc = { meshes, meta, setMorph, bipolar, setHair, setSkin, tris, THREE, root, renderer, scene, camera, controls };
+  buildPanel();
+  await setSkin(q.get('skin') || 'clara');
+  downloaded += meta.baseSize;
+  for (const [cat, name] of Object.entries(meta.defaults)) await selectPart(cat, q.get(cat) || name);
+  stat.textContent = `Download: ${(downloaded / 1e6).toFixed(1)} MB · ${Math.round(performance.now() - t0)} ms`;
+  window.__poc = { meshes, meta, setMorph, bipolar, setSkin, selectPart, setCam, tintCloth, state, renderer, THREE, get downloaded() { return downloaded; } };
+  window.__ready = true;
 }
 
-function hairMeshes(name) { return meshes.filter((m) => (m.name + ' ' + (m.parent?.name || '')).toLowerCase().includes('hair_' + name)); }
-function setHair(name) {
-  state.hair = name;
-  for (const h of meta.hairs) for (const m of hairMeshes(h)) m.visible = h === name;
-  document.querySelectorAll('[data-hair]').forEach((b) => b.classList.toggle('on', b.dataset.hair === name));
+function updateMask() {
+  let a = 0, b = 0;
+  for (const cat of ['full', 'top', 'bottom', 'shoes']) {
+    const name = state.sel[cat];
+    if (!name) continue;
+    const e = meta.catalog[cat].find((x) => x.name === name);
+    if (e?.bitA !== undefined) a |= 2 ** e.bitA;
+    if (e?.bitB !== undefined) b |= 2 ** e.bitB;
+  }
+  const hidden = (i) => (a && (maskA.getX(i) & a)) || (b && (maskB.getX(i) & b));
+  const out = [];
+  for (let t = 0; t < baseIndex.length; t += 3) {
+    if (!(hidden(baseIndex[t]) || hidden(baseIndex[t + 1]) || hidden(baseIndex[t + 2]))) out.push(baseIndex[t], baseIndex[t + 1], baseIndex[t + 2]);
+  }
+  const arr = new baseIndex.constructor(out);
+  body.geometry.setIndex(new THREE.BufferAttribute(arr, 1));
 }
-function setHairColor(hex) { for (const h of meta.hairs) for (const m of hairMeshes(h)) m.material.color.set(hex); document.querySelectorAll('[data-hc]').forEach((b) => b.classList.toggle('on', b.dataset.hc === hex)); }
+
+async function loadPart(cat, name) {
+  if (partCache.has(name)) return partCache.get(name);
+  const task = loader.loadAsync(`${BASE}${gender}/${name}.glb`).then((gltf) => {
+    const got = [];
+    gltf.scene.traverse((o) => { if (o.isSkinnedMesh) got.push(o); });
+    const bones = [];
+    for (const m of got) {
+      // cada arquivo traz uma cópia do esqueleto: liga a peça aos ossos do corpo, já posados
+      const skel = new THREE.Skeleton(m.skeleton.bones.map((b) => mainBones.get(b.name.toLowerCase())), m.skeleton.boneInverses);
+      m.removeFromParent();
+      armature.add(m);
+      m.bind(skel, m.bindMatrix);
+      dressMesh(m, cat);
+      Object.entries(state.morph).forEach(([k, v]) => setMorphOn(m, k, v));
+      meshes.push(m);
+      bones.push(m);
+    }
+    const entry = meta.catalog[cat].find((x) => x.name === name);
+    downloaded += entry?.size || 0;
+    return bones;
+  });
+  partCache.set(name, task);
+  return task;
+}
+
+async function selectPart(cat, name) {
+  const previous = state.sel[cat];
+  if (previous && previous !== name) (await partCache.get(previous))?.forEach((m) => { m.visible = false; });
+  state.sel[cat] = name || null;
+  if (cat === 'full' && name) { for (const c of ['top', 'bottom']) if (state.sel[c]) await selectPart(c, null); }
+  if ((cat === 'top' || cat === 'bottom') && name && state.sel.full) await selectPart('full', null);
+  if (name) {
+    const btn = document.querySelector(`[data-part="${name}"][data-cat="${cat}"]`);
+    btn?.classList.add('busy');
+    const ms = await loadPart(cat, name);
+    if (state.sel[cat] === name) ms.forEach((m) => { m.visible = true; });
+    btn?.classList.remove('busy');
+  }
+  document.querySelectorAll(`[data-cat="${cat}"]`).forEach((b) => b.classList.toggle('on', b.dataset.part === (name || '')));
+  updateMask();
+  stat.textContent = `Baixado até agora: ${(downloaded / 1e6).toFixed(1)} MB`;
+}
+
+async function setHairColor(hex) {
+  hairTint = hex;
+  for (const cat of ['hair', 'beard']) for (const e of meta.catalog[cat]) if (partCache.has(e.name)) (await partCache.get(e.name)).forEach((m) => m.material.color.set(hex));
+  meshes.filter((m) => /brow/.test(m.name)).forEach((m) => m.material.color.set(hex));
+}
+async function tintCloth(cat, hex) {
+  const name = state.sel[cat];
+  if (name) (await partCache.get(name)).forEach((m) => m.material.color.set(hex));
+}
 const skinCache = {};
 async function setSkin(label) {
-  const body = meshes.find((m) => m.name === 'Human');
   const file = meta.skins[label];
   skinCache[file] = skinCache[file] || await texLoader.loadAsync(BASE + file);
   const t = skinCache[file]; t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-  const bodies = meshes.filter((m) => m.material === body.material);
-  bodies.forEach((m) => { m.material.map = t; m.material.needsUpdate = true; });
+  body.material.map = t; body.material.needsUpdate = true;
   document.querySelectorAll('[data-skin]').forEach((b) => b.classList.toggle('on', b.dataset.skin === label));
 }
-function buildPanel(gender) {
+function buildPanel() {
   panel.innerHTML = '';
-  const sec = (title) => { const s = document.createElement('section'); s.innerHTML = `<h2>${title}</h2>`; panel.append(s); return s; };
+  const sec = (title, open = true) => { const d = document.createElement('details'); d.open = open; d.innerHTML = `<summary>${title}</summary>`; panel.append(d); return d; };
   const g = sec('Base');
   g.insertAdjacentHTML('beforeend', `<div class="opts"><button class="opt ${gender === 'male' ? 'on' : ''}" data-g="male">Masculino</button><button class="opt ${gender === 'female' ? 'on' : ''}" data-g="female">Feminino</button></div>`);
-  g.querySelectorAll('[data-g]').forEach((b) => { b.onclick = () => { history.replaceState(null, '', '?g=' + b.dataset.g); load(b.dataset.g).catch(fail); }; });
-  const skin = sec('Tom de pele (textura real)');
+  g.querySelectorAll('[data-g]').forEach((b) => { b.onclick = () => { gender = b.dataset.g; loadBase().catch(fail); }; });
+  const skin = sec('Tom de pele');
   skin.insertAdjacentHTML('beforeend', `<div class="opts">${Object.keys(meta.skins).map((k) => `<button class="opt" data-skin="${k}">${SKIN_LABEL[k] || k}</button>`).join('')}</div>`);
   skin.querySelectorAll('[data-skin]').forEach((b) => { b.onclick = () => setSkin(b.dataset.skin); });
-  const hair = sec('Cabelo');
-  hair.insertAdjacentHTML('beforeend', `<div class="opts">${meta.hairs.map((h) => `<button class="opt" data-hair="${h}">${HAIR_LABEL[h] || h}</button>`).join('')}</div><div class="opts" style="margin-top:7px">${HAIR_COLORS.map((c) => `<button class="sw" data-hc="${c}" style="background:${c}" aria-label="Cor ${c}"></button>`).join('')}</div>`);
-  hair.querySelectorAll('[data-hair]').forEach((b) => { b.onclick = () => setHair(b.dataset.hair); });
-  hair.querySelectorAll('[data-hc]').forEach((b) => { b.onclick = () => setHairColor(b.dataset.hc); });
-  const h = sec('Altura');
-  h.insertAdjacentHTML('beforeend', '<label class="row">Altura<input type="range" min="0.9" max="1.1" step="0.005" value="1" id="ht"></label>');
-  h.querySelector('#ht').oninput = (e) => root.scale.setScalar(+e.target.value);
-  const mv = sec('Movimento');
-  mv.insertAdjacentHTML('beforeend', '<div class="opts"><button class="opt" id="sw">Testar rebatida</button></div>');
-  mv.querySelector('#sw').onclick = (e) => { const on = !e.target.classList.contains('on'); e.target.classList.toggle('on', on); window.__swing(on); };
+  for (const [cat, title] of CATS) {
+    const items = meta.catalog[cat] || [];
+    if (!items.length) continue;
+    const s = sec(`${title} (${items.length})`, cat === 'full' || cat === 'hair');
+    const none = OPTIONAL.has(cat) ? `<button class="opt" data-cat="${cat}" data-part="">Nenhum</button>` : '';
+    s.insertAdjacentHTML('beforeend', `<div class="opts">${none}${items.map((i) => `<button class="opt" data-cat="${cat}" data-part="${i.name}">${i.label}</button>`).join('')}</div>`);
+    s.querySelectorAll('[data-part]').forEach((b) => { b.onclick = () => selectPart(cat, b.dataset.part || null).catch(fail); });
+    if (cat === 'hair') {
+      s.insertAdjacentHTML('beforeend', `<div class="sws">${HAIR_COLORS.map((c) => `<button class="sw" data-hc="${c}" style="background:${c}" aria-label="Cor ${c}"></button>`).join('')}</div>`);
+      s.querySelectorAll('[data-hc]').forEach((b) => { b.onclick = () => setHairColor(b.dataset.hc); });
+    }
+    if (['full', 'top', 'bottom', 'shoes'].includes(cat)) {
+      s.insertAdjacentHTML('beforeend', `<div class="sws">${CLOTH_COLORS.map((c) => `<button class="sw" data-tc="${c}" style="background:${c}" aria-label="Cor ${c}"></button>`).join('')}</div>`);
+      s.querySelectorAll('[data-tc]').forEach((b) => { b.onclick = () => tintCloth(cat, b.dataset.tc); });
+    }
+  }
   for (const [title, list] of Object.entries(SLIDERS)) {
-    const s = sec(title);
+    const s = sec(title, false);
     for (const [label, neg, pos] of list) {
       if (!meta.morphs.includes(pos)) continue;
-      const min = neg ? -1.6 : 0;
       const row = document.createElement('label');
       row.className = 'row';
-      row.innerHTML = `${label}<input type="range" min="${min}" max="1.6" step="0.01" value="0">`;
+      row.innerHTML = `${label}<input type="range" min="${neg ? -1.6 : 0}" max="1.6" step="0.01" value="0">`;
       row.querySelector('input').oninput = (e) => bipolar(neg, pos, +e.target.value);
       s.append(row);
     }
   }
+  const h = sec('Altura', false);
+  h.insertAdjacentHTML('beforeend', '<label class="row">Altura<input type="range" min="0.9" max="1.1" step="0.005" value="1" id="ht"></label>');
+  h.querySelector('#ht').oninput = (e) => root.scale.setScalar(+e.target.value);
 }
-const fail = (e) => { console.error(e); stat.textContent = 'Erro ao carregar: ' + e.message; };
-const clock = new THREE.Clock();
-let swing = false;
-window.__swing = (v) => { swing = v; };
-const swingBones = () => { const f = (n) => { let b = null; root.traverse((o) => { if (o.isBone && o.name.toLowerCase() === n) b = o; }); return b; }; return { ua: f('upperarm_r'), la: f('lowerarm_r'), sp: f('spine_02') }; };
-let sb = null, rest = null;
-renderer.setAnimationLoop(() => {
-  const t = clock.getElapsedTime();
-  if (root && swing) {
-    sb = sb || swingBones();
-    rest = rest || { ua: sb.ua.quaternion.clone(), la: sb.la.quaternion.clone(), sp: sb.sp.quaternion.clone() };
-    const k = Math.sin(t * 3);
-    sb.ua.quaternion.copy(rest.ua).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.9 * k));
-    sb.la.quaternion.copy(rest.la).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.45 + 0.45 * k));
-    sb.sp.quaternion.copy(rest.sp).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.22 * k));
-  } else if (sb && rest) {
-    sb.ua.quaternion.copy(rest.ua); sb.la.quaternion.copy(rest.la); sb.sp.quaternion.copy(rest.sp);
-  }
-  controls.update();
-  renderer.render(scene, camera);
-});
-load(q.get('g') || 'male').catch(fail);
+const fail = (e) => { console.error(e); stat.textContent = 'Erro: ' + e.message; };
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+loadBase().catch(fail);
 </script></body></html>
