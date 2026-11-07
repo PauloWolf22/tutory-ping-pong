@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Prova de avatar: diversidade</title>
+<script type="importmap">{ "imports": { "three": "../js/vendor/three/three.module.min.js" } }</script>
+<style>body{margin:0;background:#07101f;color:#d0ddef;font:13px system-ui}#g{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px}figure{margin:0;text-align:center}img{width:100%;display:block;border-radius:10px}figcaption{padding:3px 0 6px}</style></head>
+<body><div id="g"></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from '../js/vendor/three/GLTFLoader.js';
+import { RoomEnvironment } from '../js/vendor/three/RoomEnvironment.js';
+const BASE = '../assets/avatars-poc/';
+const q = new URLSearchParams(location.search);
+const full = q.get('body') === '1';
+const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+r.setSize(480, 560, false);
+r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
+const scene = new THREE.Scene();
+const pm = new THREE.PMREMGenerator(r);
+scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.42;
+const key = new THREE.DirectionalLight(0xfff4e8, 2.1); key.position.set(1.8, 3.4, 3.2);
+const rim = new THREE.DirectionalLight(0x5f97ff, 2.4); rim.position.set(-3, 2.5, -2.6);
+const fill = new THREE.DirectionalLight(0xbfd4ff, 0.55); fill.position.set(-2.5, 1, 2.5);
+scene.add(key, rim, fill, new THREE.HemisphereLight(0xdfe9ff, 0x303a50, 0.55));
+const cam = new THREE.PerspectiveCamera(full ? 24 : 20, 480 / 560, 0.05, 50);
+const CASES = [
+  { l: 'Homem negro, black', g: 'male', s: 'negra', h: 'afro01', c: '#141010', m: { race_african: 1 } },
+  { l: 'Homem claro, curto', g: 'male', s: 'clara', h: 'short02', c: '#3a2416', m: { race_caucasian: 1 } },
+  { l: 'Homem asiático', g: 'male', s: 'oriental', h: 'short04', c: '#141010', m: { race_asian: 1, eye_fold: 0.6 } },
+  { l: 'Homem mais pesado', g: 'male', s: 'clara', h: 'short01', c: '#7a4a24', m: { body_heavy: 0.9, face_round: 0.6, cheek_full: 0.5 } },
+  { l: 'Homem forte', g: 'male', s: 'oriental', h: 'short03', c: '#141010', m: { body_muscle: 1, jaw_wide: 0.6, face_square: 0.5 } },
+  { l: 'Homem mais velho', g: 'male', s: 'clara', h: 'short01', c: '#bdbdbd', m: { age_older: 1, body_heavy: 0.3 } },
+  { l: 'Mulher negra, black', g: 'female', s: 'negra', h: 'afro01', c: '#141010', m: { race_african: 1 } },
+  { l: 'Mulher clara, longo', g: 'female', s: 'clara', h: 'long01', c: '#7a4a24', m: { race_caucasian: 1, lips_full: 0.3 } },
+  { l: 'Mulher asiática', g: 'female', s: 'oriental', h: 'bob01', c: '#141010', m: { race_asian: 1, eye_fold: 0.6 } },
+  { l: 'Mulher mais pesada', g: 'female', s: 'clara', h: 'ponytail01', c: '#3a2416', m: { body_heavy: 0.9, face_round: 0.6 } },
+  { l: 'Mulher, trança', g: 'female', s: 'negra', h: 'braid01', c: '#141010', m: { race_african: 0.7, nose_wide: 0.3 } },
+  { l: 'Sorriso e sobrancelha', g: 'female', s: 'oriental', h: 'bob02', c: '#a33', m: { smile: 1, brows_raised: 0.5 } },
+];
+// Cor de cabelo real: usa só a luminosidade da textura, para o tom escolhido não virar preto ao multiplicar.
+const colorableHair = (mat) => {
+  mat.onBeforeCompile = (s) => {
+    s.fragmentShader = s.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      float hairLuma = dot(sampledDiffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+      diffuseColor.rgb = diffuse * clamp(hairLuma * 3.2, 0.12, 1.5);`);
+  };
+  mat.customProgramCacheKey = () => 'hair';
+  mat.needsUpdate = true;
+};
+const loader = new GLTFLoader(), tex = new THREE.TextureLoader();
+const cache = {};
+const load = (g) => cache[g] || (cache[g] = Promise.all([loader.loadAsync(`${BASE}human_${g}.glb`), fetch(`${BASE}human_${g}.json`).then((x) => x.json())]));
+const skinTex = {};
+const relax = (root) => {
+  const bone = (n) => { let b = null; root.traverse((o) => { if (o.isBone && o.name.toLowerCase() === n) b = o; }); return b; };
+  const aim = (name, child, dir) => {
+    const b = bone(name), c = bone(child);
+    if (!b || !c) return;
+    root.updateMatrixWorld(true);
+    const from = c.getWorldPosition(new THREE.Vector3()).sub(b.getWorldPosition(new THREE.Vector3())).normalize();
+    const delta = new THREE.Quaternion().setFromUnitVectors(from, dir.clone().normalize());
+    const pq = b.parent.getWorldQuaternion(new THREE.Quaternion());
+    b.quaternion.premultiply(pq.clone().invert().multiply(delta).multiply(pq));
+  };
+  aim('upperarm_l', 'lowerarm_l', new THREE.Vector3(0.2, -1, -0.02));
+  aim('upperarm_r', 'lowerarm_r', new THREE.Vector3(-0.2, -1, -0.02));
+  aim('lowerarm_l', 'hand_l', new THREE.Vector3(0.1, -1, 0.22));
+  aim('lowerarm_r', 'hand_r', new THREE.Vector3(-0.1, -1, 0.22));
+};
+const posed = new Set();
+for (const c of CASES) {
+  const [gltf, meta] = await load(c.g);
+  const root = gltf.scene;
+  if (!posed.has(c.g)) { relax(root); posed.add(c.g); }
+  scene.children.filter((o) => o.userData.human).forEach((o) => scene.remove(o));
+  root.userData.human = true; scene.add(root);
+  const meshes = [];
+  root.traverse((o) => { if (o.isMesh) { meshes.push(o); o.frustumCulled = false; } });
+  for (const m of meshes) {
+    m.morphTargetInfluences?.fill(0);
+    for (const [k, v] of Object.entries(c.m)) { const i = m.morphTargetDictionary?.[k]; if (i !== undefined) m.morphTargetInfluences[i] = v; }
+    const hair = m.name.startsWith('hair_');
+    if (hair) { m.visible = m.name === 'hair_' + c.h; m.material.alphaTest = 0.45; m.material.transparent = false; m.material.side = THREE.DoubleSide; m.material.color.set(c.c); m.material.roughness = 0.6; if (!m.material.userData.hc) { colorableHair(m.material); m.material.userData.hc = 1; } }
+    else if (/brow|lash/i.test(m.name)) { m.material.transparent = true; m.material.depthWrite = false; m.material.alphaTest = 0.05; }
+    else { m.material.transparent = false; m.material.depthWrite = true; m.material.side = THREE.FrontSide; }
+  }
+  const body = meshes.find((m) => m.name === 'Human');
+  const f = meta.skins[c.s];
+  skinTex[f] = skinTex[f] || await tex.loadAsync(BASE + f);
+  skinTex[f].flipY = false; skinTex[f].colorSpace = THREE.SRGBColorSpace; skinTex[f].anisotropy = 8;
+  body.material.map = skinTex[f]; body.material.needsUpdate = true;
+  if (full) { cam.position.set(0.5, 1.2, 5.2); cam.lookAt(0, 0.9, 0); } else { cam.position.set(0.35, 1.68, 1.75); cam.lookAt(0, 1.6, 0); }
+  r.render(scene, cam);
+  document.getElementById('g').insertAdjacentHTML('beforeend', `<figure><img src="${r.domElement.toDataURL('image/jpeg', 0.9)}"><figcaption>${c.l}</figcaption></figure>`);
+}
+document.title = 'ok';
+window.__done = true;
+</script></body></html>
