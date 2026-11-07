@@ -47,3 +47,17 @@ Projetos sem uso por cerca de 7 dias são pausados, e o site para de carregar at
 ## Testes
 
 `tests/cloud.test.html` cobre o fluxo do app com um banco simulado (login, conflito, sessão expirada, queda de conexão). Ele não executa o SQL: as regras do banco só são validadas contra um projeto real.
+
+## Tutory Sports: contas, amistosos e ranking
+
+Camada nova, em `supabase/sports.sql`. Não mexe no campeonato que já está no banco.
+
+1. **Rodar o script:** Supabase > SQL Editor > New query > cole `supabase/sports.sql` inteiro > Run. Deve aparecer "Pronto: Tutory Sports preparado". Pode rodar de novo sem perder dados.
+2. **Desligar a confirmação por e-mail:** Authentication > Sign In / Providers > Email > desligue **Confirm email** > Save. O e-mail padrão do Supabase só envia para membros do projeto, então a confirmação travaria o cadastro dos colegas. Quem filtra quem entra é a sua aprovação.
+3. **Aprovar contas:** entre como administrador > Painel > **Aprovações**. Contas novas, amistosos pendentes e o envio do campeonato ao ranking ficam ali.
+
+**Pontuação:** vitória 3, derrota 1 (por jogar), título 10, vice 5. Para mudar, edite a tabela `ranking_rules` no Table Editor; o app passa a usar os valores novos sem atualizar o site.
+
+**Limites conhecidos:**
+- "Esqueci a senha" não funciona sem um servidor de e-mail próprio (SMTP) configurado no Supabase. Até lá, a pessoa cria outra conta e o administrador bloqueia a antiga.
+- O administrador continua sendo a senha do campeonato; as contas de participante não têm poderes de administrador.

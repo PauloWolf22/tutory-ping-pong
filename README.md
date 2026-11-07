@@ -56,6 +56,8 @@ Com o servidor ligado:
 - `http://localhost:8787/tests/engine.test.html`: 52 testes do motor (sorteio, BYE, cascata de correção, pontuação, estatísticas).
 - `http://localhost:8787/tests/cloud.test.html`: 13 testes do fluxo com Supabase, usando banco simulado.
 - `http://localhost:8787/tests/football.test.html`: 27 testes do rodízio do futebol, de 10 a 30 jogadores.
+- `http://localhost:8787/tests/sports.test.html`: 14 testes de contas, amistosos, aprovação e ranking, com banco simulado.
+- `http://localhost:8787/tests/sports-ui.html?as=admin#/aprovacoes`: telas do Tutory Sports com dados de exemplo (`as=ana`, `as=novo` ou `as=visitante`).
 - `http://localhost:8787/tests/avatar-poc.html`: catálogo dos avatares realistas (roupas, cabelos, tons de pele e ajustes).
 
 ## Documentação
