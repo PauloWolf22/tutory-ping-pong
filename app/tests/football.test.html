@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Testes do futebol</title>
+<style>body{font:14px/1.5 system-ui;background:#0a0d14;color:#d0ddef;padding:24px;max-width:960px;margin:auto}.ok{color:#5fd38d}.ko{color:#ff7b7b;font-weight:700}li{list-style:none}#sum{font-size:18px;font-weight:700}</style></head>
+<body><h1>Testes do Football Team Draw</h1><div id="sum"></div><ul id="out"></ul>
+<script type="module">
+import * as F from '../js/core/football.js';
+import { UserError } from '../js/core/engine.js';
+const out = document.getElementById('out');
+let pass = 0, failed = 0; const failures = [];
+function test(name, fn) {
+  try { fn(); pass++; out.insertAdjacentHTML('beforeend', `<li class="ok">✓ ${name}</li>`); }
+  catch (e) { failed++; failures.push(name + ': ' + e.message); out.insertAdjacentHTML('beforeend', `<li class="ko">✗ ${name}: ${e.message}</li>`); }
+}
+const eq = (a, b, m = '') => { const x = JSON.stringify(a), y = JSON.stringify(b); if (x !== y) throw new Error(`${m} esperado ${y}, veio ${x}`); };
+const ok = (v, m = 'falso') => { if (!v) throw new Error(m); };
+const throws = (fn, re) => { try { fn(); } catch (e) { if (!(e instanceof UserError)) throw e; if (re && !re.test(e.message)) throw new Error('mensagem: ' + e.message); return; } throw new Error('deveria falhar'); };
+const seeded = (seed) => { let s = seed; return (n) => { s = (s * 1664525 + 1013904223) >>> 0; return s % n; }; };
+const make = (n) => { const f = F.newFootball(); for (let i = 1; i <= n; i++) F.addPlayer(f, `J${String(i).padStart(2, '0')}`); return f; };
+const healthy = (f, m = '') => { const c = F.integrity(f); ok(c.ok, `${m} integridade: ${JSON.stringify(c)}`); };
+const names = (f, ids) => ids.map((id) => F.nameOf(f, id));
+
+for (const n of [10, 11, 12, 15, 18, 20, 23, 25, 28, 30]) {
+  test(`${n} jogadores: 300 jogos sem sumir nem duplicar ninguém`, () => {
+    const f = make(n);
+    const r = seeded(n * 7 + 1);
+    F.startSession(f, r);
+    eq(f.session.teams.A.length, 5); eq(f.session.teams.B.length, 5); eq(f.session.queue.length, n - 10);
+    healthy(f);
+    for (let g = 0; g < 300; g++) {
+      const before = F.queueGroups(f);
+      const w = r(2) ? 'A' : 'B', l = w === 'A' ? 'B' : 'A';
+      const stay = [...f.session.teams[w]], next = [...f.session.queue, ...f.session.teams[l]].slice(0, 5);
+      F.registerWinner(f, w);
+      eq(f.session.teams[w], stay, 'vencedor permanece');
+      eq(f.session.teams[l], next, 'próximo grupo entra');
+      eq(f.session.teams[l].length, 5);
+      healthy(f, `jogo ${g}`);
+      ok(F.queueGroups(f).slice(0, -1).every((x) => x.length === 5), 'só o último grupo pode ser incompleto');
+    }
+  });
+}
+
+test('Exemplo do briefing com 18: fila de 3 recebe os 2 primeiros do time perdedor', () => {
+  const f = make(18);
+  F.startSession(f, seeded(3));
+  const s = f.session;
+  eq(F.queueGroups(f).map((g) => g.length), [5, 3]);
+  const [g1, g2] = F.queueGroups(f).map((g) => [...g]);
+  const a = [...s.teams.A], b = [...s.teams.B];
+  F.registerWinner(f, 'A');
+  eq(s.teams.A, a, 'Time A permanece');
+  eq(s.teams.B, g1, 'Fila 1 entra');
+  eq(F.queueGroups(f), [[...g2, b[0], b[1]], [b[2], b[3], b[4]]], '3 da fila + 2 primeiros perdedores; 3 restantes depois');
+  const b2 = [...s.teams.B];
+  F.registerWinner(f, 'B');
+  eq(s.teams.B, b2, 'novo Time B permanece');
+  eq(s.teams.A, [...g2, b[0], b[1]], 'grupo completado entra');
+  eq(F.queueGroups(f), [[b[2], b[3], b[4], a[0], a[1]], [a[2], a[3], a[4]]]);
+  healthy(f);
+});
+
+test('Ninguém é ultrapassado: cada jogador espera exatamente quem está à frente', () => {
+  const f = make(23);
+  F.startSession(f, seeded(9));
+  const target = f.session.queue[12];
+  let games = 0;
+  while (!(f.session.teams.A.includes(target) || f.session.teams.B.includes(target))) {
+    F.registerWinner(f, 'A');
+    games++;
+    ok(games < 50);
+  }
+  eq(games, 3, 'posição 13 da fila entra no 3º jogo');
+});
+
+test('Sorteio usa os 10 primeiros a chegar e embaralha sem duplicar', () => {
+  const seen = new Set();
+  for (let i = 1; i <= 200; i++) {
+    const f = make(14);
+    F.startSession(f, seeded(i));
+    const first = [...f.session.teams.A, ...f.session.teams.B];
+    eq(new Set(first).size, 10);
+    eq(names(f, first).sort(), Array.from({ length: 10 }, (_, k) => `J${String(k + 1).padStart(2, '0')}`));
+    seen.add(names(f, f.session.teams.A).join());
+  }
+  ok(seen.size > 150, 'times variados: ' + seen.size);
+});
+
+test('Sorteio real (crypto) funciona', () => { const f = make(18); F.startSession(f); healthy(f); });
+
+test('Menos de 10 presentes não sorteia', () => {
+  const f = make(9);
+  throws(() => F.startSession(f), /pelo menos 10/);
+  F.addPlayer(f, 'J10');
+  F.setPresent(f, f.players[0].id, false);
+  throws(() => F.startSession(f), /Agora são 9/);
+  eq(f.session, null);
+});
+
+test('Ausente fica fora: os 10 primeiros são os presentes', () => {
+  const f = make(11);
+  F.setPresent(f, f.players[0].id, false);
+  F.startSession(f, seeded(1));
+  ok(![...f.session.teams.A, ...f.session.teams.B, ...f.session.queue].includes(f.players[0].id));
+  healthy(f);
+});
+
+test('Lista: limite de 30, sem nome repetido, nome vazio bloqueado', () => {
+  const f = make(30);
+  throws(() => F.addPlayer(f, 'Extra'), /até 30/);
+  const g = make(2);
+  throws(() => F.addPlayer(g, ' j01 '), /já está/);
+  throws(() => F.addPlayer(g, '   '), /nome/);
+  throws(() => F.renamePlayer(g, g.players[0].id, 'J02'), /já está/);
+  F.renamePlayer(g, g.players[0].id, 'André');
+  throws(() => F.addPlayer(g, 'ANDRE'), /já está/);
+});
+
+test('Quem chega no meio do jogo entra no fim da fila', () => {
+  const f = make(12);
+  F.startSession(f, seeded(2));
+  const p = F.addPlayer(f, 'Atrasado');
+  eq(f.session.queue.at(-1), p.id);
+  healthy(f);
+});
+
+test('Saiu do campo: primeiro da fila ocupa a vaga, sem furar a ordem', () => {
+  const f = make(12);
+  F.startSession(f, seeded(2));
+  const out = f.session.teams.A[2], first = f.session.queue[0], second = f.session.queue[1];
+  F.removePlayer(f, out);
+  eq(f.session.teams.A[2], first); eq(f.session.queue, [second]);
+  healthy(f);
+});
+
+test('Sem fila, time fica incompleto com a contagem real, sem nome inventado', () => {
+  const f = make(10);
+  F.startSession(f, seeded(4));
+  F.removePlayer(f, f.session.teams.A[0]);
+  eq(f.session.teams.A.length, 4); eq(f.session.queue, []);
+  F.registerWinner(f, 'B');
+  eq(f.session.teams.A.length, 4);
+  healthy(f);
+});
+
+test('Com 10 jogadores os mesmos times se repetem e o histórico avisa', () => {
+  const f = make(10);
+  F.startSession(f, seeded(5));
+  const b = [...f.session.teams.B];
+  const h = F.registerWinner(f, 'A');
+  eq(f.session.teams.B, b); eq(h.sameTeam, true);
+});
+
+test('Presença volta para o fim da fila', () => {
+  const f = make(13);
+  F.startSession(f, seeded(6));
+  const id = f.session.queue[0];
+  F.setPresent(f, id, false);
+  healthy(f);
+  F.setPresent(f, id, true);
+  eq(f.session.queue.at(-1), id);
+  healthy(f);
+});
+
+test('Desfazer restaura estado completo, várias vezes', () => {
+  const f = make(18);
+  F.startSession(f, seeded(8));
+  const s0 = JSON.stringify(f.session), p0 = JSON.stringify(f.players);
+  F.registerWinner(f, 'A');
+  const s1 = JSON.stringify(f.session);
+  F.registerWinner(f, 'B');
+  F.removePlayer(f, f.session.queue[0]);
+  F.undo(f);
+  F.undo(f);
+  eq(JSON.stringify(f.session), s1);
+  F.undo(f);
+  eq(JSON.stringify(f.session), s0); eq(JSON.stringify(f.players), p0);
+  F.undo(f);
+  eq(f.session, null);
+});
+
+test('Troca manual funciona entre campo e fila sem duplicar', () => {
+  const f = make(15);
+  F.startSession(f, seeded(11));
+  const a = f.session.teams.A[0], q = f.session.queue[3];
+  F.swapPlayers(f, a, q);
+  eq(f.session.teams.A[0], q); eq(f.session.queue[3], a);
+  healthy(f);
+  F.undo(f);
+  eq(f.session.teams.A[0], a);
+});
+
+test('Histórico registra quem venceu, quem saiu e quem entrou', () => {
+  const f = make(18);
+  F.startSession(f, seeded(12));
+  const h = F.registerWinner(f, 'B');
+  eq(h.no, 1); eq(h.winner, 'B'); eq(h.loser, 'A'); eq(h.out.length, 5); eq(h.entering.length, 5);
+  eq(f.session.gameNo, 2); eq(f.session.history[0].no, 1);
+});
+
+test('Reiniciar mantém nomes; nova terça arquiva e limpa', () => {
+  const f = make(12);
+  F.startSession(f, seeded(13));
+  F.registerWinner(f, 'A');
+  F.newTuesday(f, true);
+  eq(f.players, []); eq(f.session, null); eq(f.archive.length, 1); eq(f.archive[0].games.length, 1);
+  const g = make(12);
+  F.startSession(g, seeded(14));
+  F.resetSession(g);
+  eq(g.players.length, 12); eq(g.session, null);
+});
+
+test('Sobrevive a serialização (persistência)', () => {
+  const f = make(18);
+  F.startSession(f, seeded(15));
+  F.registerWinner(f, 'A');
+  const copy = JSON.parse(JSON.stringify(f));
+  F.registerWinner(copy, 'B');
+  healthy(copy);
+  F.undo(copy);
+  eq(JSON.stringify(copy.session), JSON.stringify(f.session));
+});
+
+document.getElementById('sum').textContent = `${pass} passaram · ${failed} falharam`;
+document.getElementById('sum').className = failed ? 'ko' : 'ok';
+window.__results = { pass, failed, failures };
+document.title = `${pass} ok / ${failed} falhas`;
+</script></body></html>

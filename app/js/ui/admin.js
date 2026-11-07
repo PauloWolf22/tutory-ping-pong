@@ -122,7 +122,7 @@ function DataBox({ t }) {
   const newOne = async () => {
     if (await confirmDialog({ title: 'Criar um novo campeonato?', body: 'Tudo será apagado, inclusive participantes e regulamento. Exporte um backup antes, se quiser guardar.', confirmLabel: 'Apagar e criar novo', danger: true, phrase: 'NOVO' })) {
       act((d) => {
-        const fresh = E.newTournament();
+        const fresh = { ...E.newTournament(), football: d.football };
         Object.keys(d).forEach((k) => delete d[k]);
         Object.assign(d, fresh);
       }, 'Novo campeonato criado.');
@@ -138,7 +138,8 @@ function DataBox({ t }) {
       if (await confirmDialog({ title: 'Restaurar este backup?', body: `Os dados atuais serão substituídos por "${doc.meta?.name}", com ${doc.players.length} participantes.`, confirmLabel: 'Restaurar', danger: true })) {
         act((d) => {
           Object.keys(d).forEach((k) => delete d[k]);
-          Object.assign(d, doc);
+          const football = doc.football || d.football; // backups antigos não têm futebol: a sessão atual fica
+          Object.assign(d, doc, { football });
         }, 'Backup restaurado.');
       }
     } catch (err) {

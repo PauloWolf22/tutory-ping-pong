@@ -55,12 +55,14 @@ Com o servidor ligado:
 
 - `http://localhost:8787/tests/engine.test.html`: 52 testes do motor (sorteio, BYE, cascata de correção, pontuação, estatísticas).
 - `http://localhost:8787/tests/cloud.test.html`: 13 testes do fluxo com Supabase, usando banco simulado.
+- `http://localhost:8787/tests/football.test.html`: 27 testes do rodízio do futebol, de 10 a 30 jogadores.
 - `http://localhost:8787/tests/presets.html`: todos os personagens remontados. Com `?acc=1`, acessórios, expressões e formatos.
 
 ## Documentação
 
 - [docs/ARQUITETURA.md](docs/ARQUITETURA.md): decisões técnicas, estrutura e segurança.
 - [docs/AVATARES.md](docs/AVATARES.md): análise do pack, o que foi possível personalizar e como regerar os modelos.
+- [docs/TUTORY-SPORTS-PLANO.md](docs/TUTORY-SPORTS-PLANO.md): diagnóstico e plano da evolução para Tutory Sports.
 - [docs/INTEGRACAO-BANCO.md](docs/INTEGRACAO-BANCO.md): como usar o campeonato pela internet com Supabase.
 
 ## Créditos

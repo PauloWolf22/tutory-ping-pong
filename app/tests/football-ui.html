@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Futebol: tela com banco simulado</title>
+<link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"><link rel="stylesheet" href="../css/screens.css">
+<script type="importmap">{ "imports": { "three": "../js/vendor/three/three.module.min.js" } }</script></head>
+<body><div id="app"></div>
+<script type="module">
+// Abre a tela real como administrador sobre um banco simulado: nada vai para o Supabase nem para data/.
+import { html, render, Overlays, store, useDoc } from '../js/ui/lib.js';
+import { FootballPage } from '../js/ui/football.js';
+const db = {
+  rev: 0, doc: null,
+  async load() { return { rev: this.rev, doc: this.doc && structuredClone(this.doc) }; },
+  async currentRev() { return this.rev; }, listen() {},
+  async login() { return 'tok'; }, async session() { return true; }, async logout() {},
+  async save(t, rev, doc) { this.doc = structuredClone(doc); return { httpStatus: 200, rev: ++this.rev }; },
+};
+const q = new URLSearchParams(location.search);
+await store.init({ cloud: db, pollMs: 100000 });
+if (q.get('visitor') !== '1') await store.login('x');
+const App = () => { useDoc(); return html`<${FootballPage} /><${Overlays} />`; };
+render(html`<${App} />`, document.getElementById('app'));
+window.__db = db; window.__store = store;
+</script></body></html>
