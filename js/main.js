@@ -11,14 +11,17 @@ import { AdminPage } from './ui/admin.js';
 import { TelaoPage } from './ui/telao.js';
 import { ChampionPage } from './ui/champion.js';
 import { FootballPage } from './ui/football.js';
+import { AccountPage, RankingPage, FriendliesPage, ApprovalsPage, useSports } from './ui/sports.js';
+import { sports } from './core/sports.js';
 
 const LINKS = [
-  ['', 'Central'], ['jogadores', 'Jogadores'], ['sorteio', 'Sorteio'], ['chave', 'Chaveamento'], ['partidas', 'Partidas'],
-  ['futebol', 'Futebol'], ['regulamento', 'Regulamento'], ['estatisticas', 'Estatísticas'],
+  ['', 'Central'], ['jogadores', 'Jogadores'], ['sorteio', 'Sorteio'], ['chave', 'Chave'], ['partidas', 'Partidas'],
+  ['ranking', 'Ranking'], ['amistosos', 'Amistosos'], ['futebol', 'Futebol'], ['regulamento', 'Regulamento'], ['estatisticas', 'Estatísticas'],
 ];
-const MOBILE = [['', 'Central'], ['jogadores', 'Jogadores'], ['chave', 'Chave'], ['partidas', 'Partidas'], ['futebol', 'Futebol'], ['admin', 'Painel']];
+const MOBILE = [['', 'Central'], ['partidas', 'Partidas'], ['ranking', 'Ranking'], ['amistosos', 'Amistosos'], ['futebol', 'Futebol'], ['conta', 'Conta']];
 
 function Shell({ route, children }) {
+  useSports();
   const doc = useDoc();
   const here = route[0] || '';
   return html`
@@ -31,6 +34,7 @@ function Shell({ route, children }) {
       </nav>
       <div class="nav-right">
         <a class="btn sm" href="#/telao" target="_blank" rel="noopener">Telão</a>
+        <a class="btn sm hide-sm" href="#/conta">${sports.user ? 'Minha conta' : 'Criar conta'}</a>
         <a class=${'btn sm ' + (store.admin ? 'primary' : '')} href="#/admin">${store.admin ? 'Painel' : 'Entrar'}</a>
       </div>
     </header>
@@ -60,6 +64,11 @@ function App() {
     case 'partidas': screen = html`<${MatchesPage} />`; break;
     case 'partida': screen = html`<${MatchPage} key=${arg} id=${arg} />`; break;
     case 'futebol': screen = html`<${FootballPage} />`; break;
+    case 'ranking': screen = html`<${RankingPage} />`; break;
+    case 'amistosos': screen = html`<${FriendliesPage} />`; break;
+    case 'conta': screen = html`<${AccountPage} />`; break;
+    case 'meu-avatar': screen = html`<${MyAvatar} />`; break;
+    case 'aprovacoes': screen = html`<${ApprovalsPage} />`; break;
     case 'regulamento': screen = html`<${RegulationPage} />`; break;
     case 'estatisticas': screen = html`<${StatsPage} />`; break;
     case 'admin': screen = html`<${AdminPage} />`; break;
@@ -73,9 +82,18 @@ function App() {
 const titleCase = (s) => s.toLowerCase().replace(/(^|\s)\p{L}/gu, (m) => m.toUpperCase());
 
 store.init().then(() => {
+  sports.init().catch(() => {});
   document.getElementById('app').textContent = '';
   render(html`<${App} />`, document.getElementById('app'));
 }).catch((e) => {
   console.error(e);
   document.getElementById('app').innerHTML = '<div class="boot"><p>Não foi possível abrir o campeonato. Verifique a conexão e recarregue a página. Detalhe: ' + (e.message || 'erro desconhecido') + '</p></div>';
 });
+
+// O editor monta a cena 3D na primeira renderização: só entra quando o perfil já chegou.
+function MyAvatar() {
+  const s = useSports();
+  if (!s.ready) return html`<main class="page"><div class="skeleton" style="height:320px;border-radius:20px"></div></main>`;
+  if (!s.profile) return html`<main class="page narrow"><div class="glass card empty"><h3>Entre na sua conta</h3><p class="muted">O avatar da conta aparece no ranking e nos amistosos.</p><a class="btn primary" href="#/conta">Entrar ou criar conta</a></div></main>`;
+  return html`<${EditorPage} key=${s.profile.id} account />`;
+}

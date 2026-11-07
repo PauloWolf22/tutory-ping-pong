@@ -201,6 +201,7 @@ export function AdminPage() {
         ${t.draw.status !== 'done' && html`<a class="btn primary" href="#/sorteio">${t.draw.status === 'live' ? 'Continuar sorteio' : 'Abrir sorteio'} <span class="arrow">→</span></a>`}
         ${focus && html`<a class="btn primary" href=${'#/partida/' + focus.id}>${live ? 'Partida em andamento' : 'Próxima partida'} <span class="arrow">→</span></a>`}
         <a class="btn" href="#/jogadores">Participantes</a>
+        <a class="btn" href="#/aprovacoes">Aprovações</a>
       </div>
     </div>
     ${store.mode === 'local' && html`<p class="notice warn" style="margin-bottom:18px">Modo local: sem o servidor, os dados ficam só neste navegador. Para vários aparelhos, abra pelo <b>start.bat</b>.</p>`}

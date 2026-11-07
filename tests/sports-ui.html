@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tutory Sports: telas com banco simulado</title>
+<link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/app.css"><link rel="stylesheet" href="../css/screens.css">
+<script type="importmap">{ "imports": { "three": "../js/vendor/three/three.module.min.js" } }</script></head>
+<body><div id="app"></div>
+<script type="module">
+// Telas reais do Tutory Sports sobre bancos simulados: nada vai para o Supabase nem para data/.
+// ?as=admin | ana | novo | visitante   e   #ranking | amistosos | conta | aprovacoes
+import { html, render, Overlays, store, useDoc, useRoute } from '../js/ui/lib.js';
+import * as E from '../js/core/engine.js';
+import { sports } from '../js/core/sports.js';
+import { AccountPage, RankingPage, FriendliesPage, ApprovalsPage } from '../js/ui/sports.js';
+import { createMockSportsDb } from './sports-mock.js';
+
+const cloud = {
+  rev: 0, doc: null,
+  async load() { return { rev: this.rev, doc: this.doc && structuredClone(this.doc) }; },
+  async currentRev() { return this.rev; }, listen() {},
+  async login() { return 'tok'; }, async session() { return true; }, async logout() {},
+  async save(t, rev, doc) { this.doc = structuredClone(doc); return { httpStatus: 200, rev: ++this.rev }; },
+};
+sessionStorage.clear();
+await store.init({ cloud, pollMs: 1e7 });
+const db = createMockSportsDb();
+const people = [['ana', 'Ana Souza', 'f', 'Aninha'], ['bia', 'Bia Lima', 'f', ''], ['caio', 'Caio Reis', 'm', 'Caião'], ['davi', 'Davi Melo', 'm', ''], ['eva', 'Eva Rocha', 'f', ''], ['fabio', 'Fábio Nunes', 'm', 'Fabinho']];
+const ids = {};
+for (const [k, name, gender, nick] of people) {
+  await db.signUp(k + '@tutory.com.br', 'segredo1');
+  await db.saveProfile({ name, gender, nick });
+  ids[k] = db.current.id;
+}
+for (const k of Object.keys(ids).slice(0, 5)) await db.adminSetStatus('tok', ids[k], 'approved');
+const games = [['ana', 'bia', 'pingpong', '2 x 1'], ['caio', 'davi', 'pingpong', '2 x 0'], ['ana', 'caio', 'pingpong', '2 x 1'], ['eva', 'ana', 'pingpong', '2 x 1'], ['caio', 'ana', 'eafc', '3 x 1'], ['davi', 'caio', 'jiujitsu', '4 x 0']];
+for (const [a, b, m, score] of games) {
+  db.current = { id: ids[a] };
+  const { id } = await db.report({ modality: m, opponent: ids[b], won: true, score, method: m === 'jiujitsu' ? 'Pontos' : '' });
+  await db.adminDecide('tok', id, true);
+}
+db.current = { id: ids.bia };
+await db.report({ modality: 'pingpong', opponent: ids.eva, won: true, score: '2 x 0' });
+await db.adminImport('tok', [], [{ source: 'x:campeao', modality: 'pingpong', user_id: ids.ana, place: 'campeao', label: '1ª edição' }]);
+await store.login('x');
+store.update((t) => { for (const [, n] of people) E.addPlayer(t, { name: n }); });
+
+const as = new URLSearchParams(location.search).get('as') || 'admin';
+db.current = as === 'ana' ? { id: ids.ana } : as === 'novo' ? { id: ids.fabio } : null;
+if (as !== 'admin') await store.logout();
+await sports.init(db);
+
+const App = () => {
+  useDoc();
+  const [page] = useRoute();
+  const P = { amistosos: FriendliesPage, conta: AccountPage, aprovacoes: ApprovalsPage }[page] || RankingPage;
+  return html`<nav style="display:flex;gap:10px;padding:10px 16px;flex-wrap:wrap">
+    ${['ranking', 'amistosos', 'conta', 'aprovacoes'].map((p) => html`<a class="btn sm" href=${'#/' + p}>${p}</a>`)}</nav>
+    <${P} /><${Overlays} />`;
+};
+render(html`<${App} />`, document.getElementById('app'));
+window.__db = db; window.__ids = ids;
+</script></body></html>

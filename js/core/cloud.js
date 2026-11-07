@@ -4,7 +4,7 @@ import { UserError } from './engine.js';
 const OFFLINE = 'Sem conexão com o banco do campeonato. Verifique a internet e tente de novo.';
 
 // O pacote UMD precisa de document.currentScript, então entra como script comum, não como módulo.
-const loadLibrary = () => new Promise((resolve, reject) => {
+export const loadLibrary = () => new Promise((resolve, reject) => {
   if (self.supabase) { resolve(); return; }
   const s = document.createElement('script');
   s.src = new URL('../vendor/supabase.js', import.meta.url).href;

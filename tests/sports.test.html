@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Testes do Tutory Sports</title>
+<style>body{font:14px system-ui;background:#0b0f19;color:#dfe7ff;padding:24px}li.ok{color:#54d1a0}li.ko{color:#ff8a8a}</style></head>
+<body><h1>Testes do Tutory Sports</h1><p>Contas, amistosos, aprovação, ranking e envio do campeonato, com banco simulado (mesmas regras de supabase/sports.sql).</p>
+<h2 id="sum">rodando…</h2><ul id="out"></ul>
+<script type="module">
+import { store } from '../js/core/store.js';
+import * as E from '../js/core/engine.js';
+import { sports, championshipImport } from '../js/core/sports.js';
+import { createMockSportsDb } from './sports-mock.js';
+
+const results = { pass: 0, failed: 0, failures: [] };
+const out = document.getElementById('out');
+async function test(name, fn) {
+  try { await fn(); results.pass++; out.insertAdjacentHTML('beforeend', `<li class="ok">✓ ${name}</li>`); }
+  catch (e) { results.failed++; results.failures.push(name + ': ' + e.message); out.insertAdjacentHTML('beforeend', `<li class="ko">✗ ${name}: ${e.message}</li>`); }
+}
+const eq = (a, b, m = '') => { const x = JSON.stringify(a), y = JSON.stringify(b); if (x !== y) throw new Error(`${m} esperado ${y}, veio ${x}`); };
+const rejects = async (p, re) => { try { await p; } catch (e) { if (re && !re.test(e.message)) throw new Error('mensagem: ' + e.message); return e; } throw new Error('deveria falhar'); };
+
+// Campeonato em memória (não toca data/ nem o Supabase) e administrador com token fixo.
+const cloud = {
+  rev: 0, doc: null,
+  async load() { return { rev: this.rev, doc: this.doc && structuredClone(this.doc) }; },
+  async currentRev() { return this.rev; }, listen() {},
+  async login(p) { if (p !== 'certa') throw new E.UserError('Senha incorreta.'); return 'tok'; },
+  async session() { return true; }, async logout() {},
+  async save(t, rev, doc) { this.doc = structuredClone(doc); return { httpStatus: 200, rev: ++this.rev }; },
+};
+sessionStorage.clear();
+await store.init({ cloud, pollMs: 1e7 });
+const db = createMockSportsDb();
+await sports.init(db);
+
+const ids = {};
+async function account(key, name, gender) {
+  await sports.signUp({ email: key + '@x.com', password: 'segredo1', name, nick: '', gender });
+  ids[key] = sports.user.id;
+}
+
+await test('Cadastro cria conta aguardando aprovação', async () => {
+  await account('ana', 'Ana Souza', 'f');
+  eq(sports.profile.status, 'pending'); eq(sports.approved, false);
+});
+await test('Conta aguardando não lança amistoso', async () => {
+  await rejects(sports.need().report({ modality: 'pingpong', opponent: ids.ana, won: true }), /aguarda aprovação/);
+});
+await test('Senha curta e e-mail repetido são recusados', async () => {
+  await rejects(sports.signUp({ email: 'ana@x.com', password: 'segredo1', name: 'Ana', gender: 'f' }), /já tem conta/);
+  await rejects(sports.signUp({ email: 'z@x.com', password: '123', name: 'Z', gender: 'f' }), /6 caracteres/);
+});
+await test('Visitante não aprova contas', async () => {
+  await rejects((async () => sports.admin((d, t) => d.adminSetStatus(t, ids.ana, 'approved')))(), /administrador/);
+});
+await test('Administrador vê e-mail na lista e aprova', async () => {
+  await account('bia', 'Bia Lima', 'f');
+  await account('caio', 'Caio Reis', 'm');
+  await store.login('certa');
+  const p = await sports.admin((d, t) => d.adminPending(t));
+  eq(p.profiles.length, 3); eq(p.profiles.some((x) => x.email === 'bia@x.com'), true);
+  for (const k of ['ana', 'bia', 'caio']) await sports.admin((d, t) => d.adminSetStatus(t, ids[k], 'approved'));
+  eq((await db.profiles()).length, 3);
+});
+await test('Amistoso fica pendente e não conta no ranking', async () => {
+  await sports.signIn('ana@x.com', 'segredo1');
+  eq(sports.approved, true);
+  await sports.need().report({ modality: 'pingpong', opponent: ids.bia, won: true, score: '2 x 1' });
+  eq(await db.ranking('pingpong', null), []);
+});
+await test('Não dá para jogar contra si mesmo nem contra conta não aprovada', async () => {
+  await rejects(sports.need().report({ modality: 'pingpong', opponent: ids.ana, won: true }), /adversário/);
+  await rejects(sports.need().report({ modality: 'pingpong', opponent: 'x', won: true }), /adversário/);
+});
+await test('Aprovado pelo administrador entra no ranking: vitória 3, derrota 1', async () => {
+  const p = await sports.admin((d, t) => d.adminPending(t));
+  eq(p.results.length, 1);
+  await sports.admin((d, t) => d.adminDecide(t, p.results[0].id, true));
+  const r = await db.ranking('pingpong', null);
+  eq(r.map((x) => [x.name, x.points, x.wins, x.losses]), [['Ana Souza', 3, 1, 0], ['Bia Lima', 1, 0, 1]]);
+});
+await test('Recusado não conta; cancelar só o próprio pendente', async () => {
+  await sports.need().report({ modality: 'pingpong', opponent: ids.caio, won: true });
+  const [r] = (await sports.admin((d, t) => d.adminPending(t))).results;
+  await sports.admin((d, t) => d.adminDecide(t, r.id, false));
+  eq((await db.ranking('pingpong', null)).some((x) => x.name === 'Caio Reis'), false);
+  const { id } = await sports.need().report({ modality: 'eafc', opponent: ids.caio, won: false });
+  await sports.signIn('caio@x.com', 'segredo1');
+  await rejects(sports.need().cancel(id), /seu/);
+  await sports.signIn('ana@x.com', 'segredo1');
+  await sports.need().cancel(id);
+  eq((await sports.admin((d, t) => d.adminPending(t))).results.length, 0);
+});
+await test('Ranking separa masculino e feminino e cada modalidade', async () => {
+  await sports.signIn('caio@x.com', 'segredo1');
+  const { id } = await sports.need().report({ modality: 'jiujitsu', opponent: ids.ana, won: true, method: 'Finalização' });
+  await sports.admin((d, t) => d.adminDecide(t, id, true));
+  eq((await db.ranking('pingpong', 'm')).length, 0);
+  eq((await db.ranking('pingpong', 'f')).length, 2);
+  eq((await db.ranking('jiujitsu', 'm')).map((x) => x.name), ['Caio Reis']);
+  eq((await db.ranking('jiujitsu', null)).length, 2);
+});
+await test('Visitante só vê resultados aprovados', async () => {
+  await sports.need().report({ modality: 'mk', opponent: ids.bia, won: true });
+  await sports.signOut();
+  eq((await db.results(null, 50)).every((r) => r.status === 'approved'), true);
+});
+await test('Avatar da conta aparece no ranking', async () => {
+  await sports.signIn('bia@x.com', 'segredo1');
+  await sports.saveAvatar({ v: 2, gender: 'female', thumb: 'data:image/webp;base64,AAA' });
+  eq((await db.ranking('pingpong', null)).find((x) => x.name === 'Bia Lima').thumb, 'data:image/webp;base64,AAA');
+});
+await test('Campeonato encerrado vai ao ranking com título, sem duplicar', async () => {
+  store.update((t) => {
+    for (const n of ['Ana Souza', 'Bia Lima', 'Caio Reis', 'Davi']) E.addPlayer(t, { name: n });
+    E.startDraw(t); while (t.draw.status === 'live') E.drawNext(t);
+    let m; while ((m = E.nextMatch(t))) E.saveGames(t, m.id, [[11, 5], [11, 7]]);
+  });
+  const t = store.doc;
+  store.update((d) => { for (const p of d.players) { const k = { 'Ana Souza': 'ana', 'Bia Lima': 'bia', 'Caio Reis': 'caio' }[p.name]; if (k) p.userId = ids[k]; } });
+  const plan = championshipImport(store.doc, { key: 'pp-1', gameWins: E.gameWins, champion: E.champion(store.doc), vice: E.viceChampion(store.doc) });
+  const finished = Object.values(store.doc.matches).filter((m) => !m.bye && m.winner && m.p[0] && m.p[1]).length;
+  eq(plan.items.length + plan.skipped, finished, 'jogos');
+  eq(plan.items.every((i) => /^\d+ x \d+$/.test(i.score)), true, 'placar');
+  const before = (await db.ranking('pingpong', null)).reduce((s, x) => s + x.points, 0);
+  await sports.admin((d, tk) => d.adminImport(tk, plan.items, plan.awards));
+  const after1 = await db.ranking('pingpong', null);
+  await sports.admin((d, tk) => d.adminImport(tk, plan.items, plan.awards));
+  const after2 = await db.ranking('pingpong', null);
+  eq(after1, after2, 'reenvio');
+  const champ = E.champion(store.doc);
+  const gained = after1.reduce((s, x) => s + x.points, 0) - before;
+  eq(gained, plan.items.length * 4 + plan.awards.reduce((s, a) => s + (a.place === 'campeao' ? 10 : 5), 0), 'pontos');
+  if (champ.userId) eq(after1.find((x) => x.id === champ.userId).titles, 1, 'título');
+});
+await test('Sessão de administrador expirada é recusada', async () => {
+  await store.logout();
+  await rejects((async () => sports.admin((d, t) => d.adminPending(t)))(), /administrador/);
+  await rejects(db.adminPending('outro'), /expirada/);
+});
+
+document.getElementById('sum').textContent = `${results.pass} passaram · ${results.failed} falharam`;
+document.title = `${results.pass} ok / ${results.failed} falhas`;
+window.__results = results;
+</script></body></html>

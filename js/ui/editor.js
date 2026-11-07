@@ -1,5 +1,7 @@
 import { html, useState, useEffect, store, useDoc, useStage, go, toast, playerById, avatarOf, handleError } from './lib.js';
 import { EditorStage } from '../three/stage.js';
+import { sports } from '../core/sports.js';
+import { useSports } from './sports.js';
 import {
   loadGender, normalizeAvatar, avatarFromName, portrait, webglAvailable, GENDERS, SKINS, HAIR_COLORS, CLOTH_COLORS, CATEGORIES, OPTIONAL, SLIDERS, RACKETS, POSES,
 } from '../three/avatars.js';
@@ -31,9 +33,10 @@ function Slider({ label, neg, pos, morph, onChange }) {
     <input type="range" min=${neg ? -1.6 : 0} max="1.6" step="0.02" value=${value} onInput=${(e) => onChange(neg, pos, +e.target.value)} /></label>`;
 }
 
-export function EditorPage({ id }) {
+export function EditorPage({ id, account = false }) {
   const t = useDoc();
-  const player = playerById(t, id);
+  const s = useSports();
+  const player = account ? (s.profile ? { id: s.profile.id, name: s.profile.name, avatar: s.profile.avatar } : null) : playerById(t, id);
   const [draft, setDraft] = useState(() => normalizeAvatar(player ? avatarOf(player) : {}));
   const [tab, setTab] = useState('base');
   const [meta, setMeta] = useState(null);
@@ -51,7 +54,7 @@ export function EditorPage({ id }) {
   }, [JSON.stringify({ ...draft, thumb: null })]);
 
   if (!player) return html`<main class="page"><div class="glass empty"><h3>Participante não encontrado</h3><a class="btn" href="#/jogadores">Ver participantes</a></div></main>`;
-  const needsCode = store.remote && !store.admin;
+  const needsCode = !account && store.remote && !store.admin;
   const patch = (p) => setDraft((d) => ({ ...d, ...p, provisional: false }));
   const setPart = (cat, name) => setDraft((d) => {
     const parts = { ...d.parts, [cat]: name };
@@ -76,9 +79,10 @@ export function EditorPage({ id }) {
     setSaving(true);
     try {
       const thumb = await portrait({ ...draft, thumb: null }, { fresh: true, size: 256 });
-      await store.saveAvatar(player.id, { ...draft, thumb, provisional: false }, code);
+      if (account) await sports.saveAvatar({ ...draft, thumb, provisional: false });
+      else await store.saveAvatar(player.id, { ...draft, thumb, provisional: false }, code);
       toast('Avatar salvo.', 'ok');
-      go('jogadores');
+      go(account ? 'conta' : 'jogadores');
     } catch (e) { handleError(e); } finally { setSaving(false); }
   };
   const catalog = meta?.catalog || {};
@@ -136,7 +140,7 @@ export function EditorPage({ id }) {
         ${needsCode && html`<label class="field code-field">Seu código pessoal
           <input class="input code-input" autocomplete="off" maxlength="6" value=${code} onInput=${(e) => setCode(e.target.value)} placeholder="ABC123" /></label>`}
         <div class="actions">
-          <a class="btn ghost" href="#/jogadores">Voltar</a>
+          <a class="btn ghost" href=${account ? "#/conta" : "#/jogadores"}>Voltar</a>
           <button class="btn primary grow" disabled=${saving || loading || (needsCode && code.trim().length < 6)} onClick=${save}>${saving ? 'Salvando…' : 'Salvar avatar'}</button>
         </div>
       </div>
