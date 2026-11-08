@@ -712,3 +712,14 @@ a.bk-card:hover { border-color: var(--beam); }
 .thumb-img { display: block; width: 100%; aspect-ratio: 1; border-radius: 9px; object-fit: cover; background: #0d1a33; }
 .thumb-img.loading { animation: pulse 1.2s ease-in-out infinite; }
 .thumbs-toggle { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+
+/* vídeo de abertura da home */
+.hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% center; background: #02040b; }
+.hero-fade.video { background: linear-gradient(90deg, rgba(2, 3, 8, 0.92) 0%, rgba(2, 3, 8, 0.62) 38%, rgba(2, 3, 8, 0.08) 68%), linear-gradient(0deg, var(--abyss), transparent 26%); }
+@media (max-width: 960px) {
+  .hero { min-height: 560px; }
+  .hero-video { position: absolute; inset: 0; height: 100%; }
+  .hero-fade.video { background: linear-gradient(0deg, rgba(2, 3, 8, 0.96) 0%, rgba(2, 3, 8, 0.7) 55%, rgba(2, 3, 8, 0.25) 100%); }
+}
+.hero-pause { position: absolute; right: clamp(16px, 4vw, 56px); top: 18px; z-index: 3; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(2, 4, 11, 0.45); color: #fff; font-size: 12px; cursor: pointer; backdrop-filter: blur(8px); }
+.hero-pause:hover { background: rgba(2, 4, 11, 0.7); }
