@@ -203,3 +203,21 @@ Tudo em `supabase/sports.sql`, que pode ser rodado de novo sem perder dados. **R
 - **Miniaturas** no editor (Roupas e Cabelo): uma foto do próprio avatar com cada opção. São geradas uma a uma e é possível ligar e desligar.
 
 **Banco:** `supabase/sports.sql` mudou (faixa no avatar). Rode de novo antes de publicar.
+
+## Acesso ADM e vídeo da home (08/11/2026)
+- **Botão ADM fixo no topo** (vira "Painel ADM" depois de entrar). Na tela de participantes, quem não está como administrador vê "Entrar como ADM para adicionar".
+- **Vídeo de abertura da home** (`tools/home_video/build_edit.py`):
+  - 13 cortes reais de jiu-jitsu, ping pong, futebol, tênis e TUTORY Gaming, com troféu e comemoração no final.
+  - Os clipes vêm do Pexels (licença livre para uso comercial, sem atribuição). A lista dos IDs está em `tools/home_video/clips/lista.txt`.
+  - Cor unificada em todos os cortes, legenda por esporte, abertura e fechamento com a logo TUTORY.
+  - 24,5 s em loop. Arquivos: MP4 1080p (6 MB), 720p para celular (4,9 MB) e imagem de capa.
+  - O vídeo toca sempre, mudo, com botão de pausar. Só quem ativou economia de dados vê a capa.
+  - A primeira tentativa, 3D renderizada no Blender, foi recusada e ficou em `docs/video/` só como registro.
+  - Limites conhecidos: o clipe de ping pong é caseiro (garagem), e no clipe da faixa preta aparece um pequeno patch de federação de judô.
+- **Camisa TUTORY:** a gola agora é careca, com curva suave na frente. Antes havia um recorte em degrau que abria uma fresta entre o pescoço e a gola.
+- **Peças TUTORY no corpo feminino (erro da fase 4, achado agora):**
+  - O problema: a camisa e o kimono femininos ficavam com ombros quadrados, uns 4 cm acima do corpo, com buracos de pele nas costas e a logo na gola.
+  - A causa: o script modelava as peças sobre a malha neutra do MakeHuman, mas o MPFB encaixa a roupa no corpo já com as formas de gênero e proporção aplicadas (até 10 cm de diferença no feminino).
+  - A correção: as peças agora nascem do corpo com as formas aplicadas, nos dois gêneros. A altura da logo no tronco feminino segue a proporção do corpo.
+  - Os testes de combinações passaram, 16 por gênero, sem falhas automáticas.
+  - Limite que continua: o decote em V do kimono feminino é fundo e tem a borda irregular.

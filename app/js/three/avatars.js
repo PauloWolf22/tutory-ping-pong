@@ -232,12 +232,15 @@ const SPOTS = {
 };
 // No kimono o peito tem o decote em V: a logo do peito vai para o lado esquerdo, como um patch.
 const GI_CHEST = { u: 0.197, v: 0.655, width: 0.1, uPerM: 0.63, vPerM: 0.526, flip: false };
+// v do tronco é a altura absoluta (z / 1,9 m). O corpo feminino é mais baixo (pescoço em 1,347 m contra 1,482 m): mesma posição relativa.
+const FEMALE_TORSO_V = 1.347 / 1.482;
 function logoUniforms(cfg, color, name = "") {
   const out = { centers: [], halves: [], on: [], flips: [] };
   for (const k of ["chest", "back", "sleeve"]) {
     const s = k === "chest" && /gi/.test(name) ? GI_CHEST : SPOTS[k], l = cfg.logo[k];
     const w = s.width * l.size;
-    out.centers.push(new THREE.Vector2(s.u, s.v + l.y * 0.05));
+    const v = /_f$/.test(name) && k !== "sleeve" ? s.v * FEMALE_TORSO_V : s.v;
+    out.centers.push(new THREE.Vector2(s.u, v + l.y * 0.05));
     out.halves.push(new THREE.Vector2((w * s.uPerM) / 2, ((w / LOGO_RATIO) * s.vPerM) / 2));
     out.on.push(l.on ? 1 : 0);
     out.flips.push(s.flip ? 1 : 0);

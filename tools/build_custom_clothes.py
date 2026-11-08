@@ -50,7 +50,11 @@ INV = MW.inverted()
 groups = {g.index: g.name for g in human.vertex_groups}
 gidx = {g.name: g.index for g in human.vertex_groups}
 mesh = human.data
-W = [MW @ v.co for v in mesh.vertices]  # coordenadas do mundo (metros, Z para cima, frente em -Y)
+# Corpo com as formas aplicadas (gênero, proporções). O MPFB casa a roupa com este corpo (after_modifiers=True); usar a
+# malha neutra (sem as formas) deslocava as peças em até 10 cm no corpo feminino (ombros altos, buracos nas costas).
+EVAL = bpy.data.meshes.new_from_object(human.evaluated_get(bpy.context.evaluated_depsgraph_get()))  # cópia própria: sobrevive a novas atualizações da cena
+assert len(EVAL.vertices) == len(mesh.vertices)
+W = [MW @ v.co for v in EVAL.vertices]  # coordenadas do mundo (metros, Z para cima, frente em -Y)
 
 
 def dominant(v):
@@ -129,7 +133,7 @@ def new_object(name, parts):
     regions = []
     vgroup = []
     src = bmesh.new()
-    src.from_mesh(mesh)
+    src.from_mesh(EVAL)
     src.verts.ensure_lookup_table()
     src.faces.ensure_lookup_table()
     src.normal_update()
@@ -299,11 +303,19 @@ gi, regions = new_object('tutory_gi' + SUFFIX, [
 ])
 set_uv(gi, regions)
 finish(gi)
-legs = [i for i, v in enumerate(mesh.vertices) if in_group(v, "body") and (dom[i] or "").startswith(("thigh", "calf", "pelvis")) and waist_z > W[i].z > ankle_z + 0.05]
+legs = [i for i, v in enumerate(mesh.vertices) if in_group(v, "body") and not is_arm(i) and not (dom[i] or "").startswith(HAND) and waist_z > W[i].z > ankle_z + 0.05]
 write(gi, "tutory_gi" + SUFFIX, "Kimono de jiu-jitsu Tutory Sports", (0.95, 0.95, 0.95), hidden_group("tutory_gi" + SUFFIX, torso_jacket + sleeves + lapel, legs))
 
 # ---------------------------------------------------------------- camisa esportiva e bermuda
-jersey = faces_where("body", lambda i: jacket_vertex(i, 0.38) and above_ok(i) and W[i].z < neck_z + 0.04 and not (W[i].y < 0 and W[i].z > neck_z - 0.045 and abs(W[i].x) < 0.06))
+def crew_ok(i):
+    """Gola careca: na frente a borda desce numa curva suave (U), sem o recorte em degrau que abria fresta."""
+    p = W[i]
+    if p.y >= 0 or abs(p.x) >= 0.085:
+        return True
+    return p.z < neck_z - 0.035 * (1 - (p.x / 0.085) ** 2)
+
+
+jersey = faces_where("body", lambda i: jacket_vertex(i, 0.38) and above_ok(i) and W[i].z < neck_z + 0.04 and crew_ok(i))
 jsleeve = [f for f in jersey if any(is_arm(i) for i in mesh.polygons[f].vertices)]
 jbody = [f for f in jersey if f not in set(jsleeve)]
 j, regions = new_object('tutory_jersey' + SUFFIX, [(jbody, 0.011, 'body'), (jsleeve, 0.013, 'sleeve')])
@@ -315,6 +327,6 @@ shorts = faces_where('helper-tights', lambda i: waist_z + 0.01 > W[i].z > knee_z
 s, regions = new_object('tutory_shorts' + SUFFIX, [(shorts, 0.016, "body", "helper-tights")])
 set_uv(s, regions)
 finish(s)
-hips = [i for i, v in enumerate(mesh.vertices) if in_group(v, "body") and (dom[i] or "").startswith(("thigh", "pelvis")) and waist_z > W[i].z > knee_z + 0.13]
+hips = [i for i, v in enumerate(mesh.vertices) if in_group(v, "body") and not is_arm(i) and not (dom[i] or "").startswith(HAND) and waist_z > W[i].z > knee_z + 0.13]
 write(s, "tutory_shorts" + SUFFIX, "Bermuda esportiva Tutory Sports", (0.95, 0.95, 0.95), hidden_group("tutory_shorts" + SUFFIX, [], hips))
 log('fim')
