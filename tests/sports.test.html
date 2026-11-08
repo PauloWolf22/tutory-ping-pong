@@ -130,7 +130,8 @@ await test('Campeonato encerrado vai ao ranking com título, sem duplicar', asyn
   eq(after1, after2, 'reenvio');
   const champ = E.champion(store.doc);
   const gained = after1.reduce((s, x) => s + x.points, 0) - before;
-  eq(gained, plan.items.length * 4 + plan.awards.reduce((s, a) => s + (a.place === 'campeao' ? 10 : 5), 0), 'pontos');
+  eq(gained, plan.items.length * 4 + plan.awards.reduce((s, a) => s + ({ campeao: 10, vice: 5, terceiro: 3, participacao: 1 })[a.place], 0), 'pontos');
+  eq(plan.awards.filter((a) => a.place === 'participacao').length, 3, 'participação de quem jogou e tem conta');
   if (champ.userId) eq(after1.find((x) => x.id === champ.userId).titles, 1, 'título');
 });
 await test('Avatar salvo na conta volta igual depois de sair e entrar', async () => {
@@ -172,6 +173,103 @@ await test('Foto do avatar cabe no banco mesmo sem WEBP (iPhone antigo)', async 
   const url = encodePortrait(c, true);
   eq(url.startsWith('data:image/jpeg'), true, 'formato');
   eq(url.length <= 12000, true, 'tamanho ' + url.length);
+});
+// ---------------------------------------------------------------- fase 3: rankings
+await test('Pontuação por modalidade: só a modalidade alterada muda; valores inválidos recusados', async () => {
+  await store.login('certa');
+  const pp = await db.ranking('pingpong', null), jj0 = await db.ranking('jiujitsu', null);
+  const caio0 = jj0.find((x) => x.id === ids.caio).points;
+  await sports.admin((d, t) => d.adminSetPoints(t, 'jiujitsu', { win: 10, loss: 0, friendly_win: 8, friendly_loss: 0, participation: 0, champion: 20, vice: 10, third: 5, achievement: 2, weight: 1 }));
+  eq((await db.ranking('jiujitsu', null)).find((x) => x.id === ids.caio).points, 8, 'vitória em amistoso vale 8 no jiu-jitsu');
+  eq(caio0, 3);
+  eq(await db.ranking('pingpong', null), pp, 'ping pong não mudou');
+  await rejects(sports.admin((d, t) => d.adminSetPoints(t, 'jiujitsu', { win: -1, loss: 0, friendly_win: 0, friendly_loss: 0, participation: 0, champion: 0, vice: 0, third: 0, achievement: 0, weight: 1 })), /inválida/);
+  await rejects(sports.admin((d, t) => d.adminSetPoints(t, '*', null)), /padrão/);
+  await sports.admin((d, t) => d.adminSetPoints(t, 'jiujitsu', null));
+  eq((await db.ranking('jiujitsu', null)).find((x) => x.id === ids.caio).points, 3, 'volta à pontuação padrão');
+  await rejects(db.adminSetPoints('outro', '*', {}), /expirada/);
+});
+await test('Faixa: só entra no ranking por faixa depois de validada; trocar a faixa tira a validação', async () => {
+  await sports.signIn('caio@x.com', 'segredo1');
+  await sports.saveProfile({ name: 'Caio Reis', gender: 'm', belt: 'Azul' });
+  eq((await db.ranking('jiujitsu', null, 'Azul')).length, 0, 'sem validação');
+  await rejects(sports.saveProfile({ name: 'Caio Reis', gender: 'm', belt: 'Dourada' }), /Faixa/);
+  await sports.admin((d, t) => d.adminSetBelt(t, ids.caio, 'Azul', true));
+  eq((await db.ranking('jiujitsu', null, 'Azul')).map((x) => x.name), ['Caio Reis']);
+  eq((await db.ranking('jiujitsu', null, 'Roxa')).length, 0);
+  await sports.saveProfile({ name: 'Caio Reis', gender: 'm', belt: 'Roxa' });
+  eq((await db.ranking('jiujitsu', null, 'Roxa')).length, 0, 'nova faixa espera validação');
+  await sports.admin((d, t) => d.adminSetBelt(t, ids.caio, 'Roxa', true));
+});
+await test('Counter-Strike por equipe: cada integrante pontua; mesma pessoa nas duas equipes recusada', async () => {
+  for (const [k, n] of [['dani', 'Dani Alves'], ['edu', 'Edu Melo']]) await account(k, n, 'm');
+  for (const k of ['dani', 'edu']) await sports.admin((d, t) => d.adminSetStatus(t, ids[k], 'approved'));
+  await sports.signIn('caio@x.com', 'segredo1');
+  await rejects(sports.need().report({ modality: 'cs', opponent: ids.dani, won: true, team: [ids.edu], opponents: [ids.edu] }), /duas equipes/);
+  const { id } = await sports.need().report({ modality: 'cs', opponent: ids.dani, won: true, score: '13 x 9', team: [ids.edu, ids.ana], opponents: [ids.bia] });
+  await sports.admin((d, t) => d.adminDecide(t, id, true));
+  const r = await db.ranking('cs', null);
+  eq(r.filter((x) => x.fwins === 1).map((x) => x.name).sort(), ['Ana Souza', 'Caio Reis', 'Edu Melo']);
+  eq(r.filter((x) => x.flosses === 1).map((x) => x.name).sort(), ['Bia Lima', 'Dani Alves']);
+});
+await test('Amistoso repetido (mesmo dia, dupla, placar e vencedor) é recusado', async () => {
+  await sports.need().report({ modality: 'eafc', opponent: ids.dani, won: true, score: '3 x 1' });
+  await rejects(sports.need().report({ modality: 'eafc', opponent: ids.dani, won: true, score: '3 x 1' }), /já foi lançado/);
+  await sports.signIn('dani@x.com', 'segredo1');
+  await rejects(sports.need().report({ modality: 'eafc', opponent: ids.caio, won: false, score: '3 x 1' }), /já foi lançado/, 'lançado pelo outro lado');
+  await sports.need().report({ modality: 'eafc', opponent: ids.caio, won: false, score: '2 x 0' });
+});
+await test('Ranking geral normaliza cada modalidade (líder = 100) e respeita o peso', async () => {
+  const g = await db.rankingGeneral(null, null);
+  for (const m of ['pingpong', 'jiujitsu', 'cs']) {
+    const leader = Math.max(...g.flatMap((x) => x.parts.filter((p) => p.modality === m).map((p) => p.norm)));
+    eq(leader, 100, 'líder de ' + m);
+  }
+  const caio = g.find((x) => x.id === ids.caio);
+  eq(caio.score, Math.round(caio.parts.reduce((s, p) => s + p.score, 0) * 10) / 10);
+  const base = (await db.points()).find((r) => r.modality === '*');
+  await sports.admin((d, t) => d.adminSetPoints(t, 'cs', { ...base, weight: 0 }));
+  eq((await db.rankingGeneral(null, null)).flatMap((x) => x.parts).filter((p) => p.modality === 'cs').every((p) => p.score === 0), true, 'peso 0 zera a modalidade');
+  await sports.admin((d, t) => d.adminSetPoints(t, 'cs', null));
+  const gaming = await db.rankingGeneral('gaming', null);
+  eq(gaming.every((x) => x.parts.every((p) => ['eafc', 'cod', 'mk'].includes(p.modality))), true, 'TUTORY Gaming só com jogos');
+  eq((await db.rankingGeneral(null, 'f')).every((x) => x.gender === 'f'), true, 'categoria');
+});
+await test('Conquista manual soma pontos, não duplica e pode ser removida', async () => {
+  const before = (await db.ranking('pingpong', null)).find((x) => x.id === ids.bia).points;
+  const { id } = await sports.admin((d, t) => d.adminAward(t, ids.bia, 'pingpong', 'Virada histórica'));
+  eq((await db.ranking('pingpong', null)).find((x) => x.id === ids.bia).points, before + 2);
+  await rejects(sports.admin((d, t) => d.adminAward(t, ids.bia, 'pingpong', 'virada histórica')), /já tem/);
+  await sports.admin((d, t) => d.adminDeleteAward(t, id));
+  eq((await db.ranking('pingpong', null)).find((x) => x.id === ids.bia).points, before);
+});
+await test('Campeonato: terceiro lugar, participação e categoria vão ao ranking', async () => {
+  const t = { players: [{ id: 'a', name: 'A', userId: ids.ana }, { id: 'b', name: 'B', userId: ids.bia }, { id: 'c', name: 'C', userId: null }], matches: { m1: { id: 'm1', p: ['a', 'b'], winner: 'a', endedAt: Date.parse('2026-10-01T15:00:00') } }, scoring: {}, meta: { name: 'Feminino', edition: '1ª' } };
+  const plan = championshipImport(t, { modality: 'pingpong', key: 'fem-1', gameWins: () => [2, 0], champion: { id: 'a' }, vice: { id: 'b' }, third: { id: 'c' }, category: 'f' });
+  eq(plan.items[0].played_on, '2026-10-01'); eq(plan.items[0].category, 'f');
+  eq(plan.awards.map((a) => a.place).sort(), ['campeao', 'participacao', 'participacao', 'vice'], 'sem conta não recebe terceiro');
+  const r1 = await sports.admin((d, tk) => d.adminImport(tk, plan.items, plan.awards));
+  eq(r1, { results: 1, awards: 4 });
+  eq(await sports.admin((d, tk) => d.adminImport(tk, plan.items, plan.awards)), { results: 0, awards: 0 }, 'reenvio não duplica nem altera');
+  eq(db._r.find((r) => r.source === 'fem-1:m1').category, 'f');
+});
+await test('Auditoria registra decisões e mudanças de pontuação; só o administrador lê', async () => {
+  const log = await sports.admin((d, t) => d.adminAudit(t, 200));
+  eq(log.some((a) => a.tbl === 'ranking_points' && a.op === 'insert'), true, 'pontuação');
+  eq(log.some((a) => a.tbl === 'results' && a.after?.status === 'approved'), true, 'aprovação');
+  eq(log.find((a) => a.tbl === 'results' && a.after?.status === 'approved').actor, 'administrador', 'quem aprovou');
+  eq(log.find((a) => a.tbl === 'results' && a.op === 'insert').actor, ids.dani, 'quem lançou');
+  eq(log.some((a) => a.tbl === 'profiles' && a.after?.belt_verified === true), true, 'faixa');
+  await rejects(db.adminAudit('outro'), /expirada/);
+});
+await test('Modalidade nova aparece; desativada some das telas sem apagar resultados', async () => {
+  await sports.admin((d, t) => d.adminSaveModality(t, { id: 'tenis', name: 'Tênis', family: 'esporte', kind: 'individual', sort: 7 }));
+  eq((await db.modalities()).some((m) => m.id === 'tenis'), true);
+  await rejects(sports.admin((d, t) => d.adminSaveModality(t, { id: 'Tênis!', name: 'x' })), /Código/);
+  await sports.admin((d, t) => d.adminSaveModality(t, { id: 'eafc', name: 'EA FC', family: 'gaming', kind: 'individual', active: false, sort: 3 }));
+  eq((await db.modalities()).some((m) => m.id === 'eafc'), false);
+  eq(db._r.some((r) => r.modality === 'eafc'), true, 'resultados preservados');
+  await sports.admin((d, t) => d.adminSaveModality(t, { id: 'eafc', name: 'EA FC', family: 'gaming', kind: 'individual', active: true, sort: 3 }));
 });
 await test('Sessão de administrador expirada é recusada', async () => {
   await store.logout();
