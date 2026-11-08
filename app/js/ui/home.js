@@ -63,7 +63,8 @@ export function HomePage() {
       <div class="hero-copy">
         ${t.meta.logo && html`<img class="hero-logo" src=${t.meta.logo} alt="" />`}
         <div class="hero-tags"><span class=${'chip ' + (status.key === 'running' || status.key === 'draw' ? 'live' : status.key === 'finished' ? 'champion' : 'next')}>${status.label}</span><span class="chip plain">${t.meta.edition}</span></div>
-        <h1 class="hero-title">${t.meta.name}</h1>
+        <h1 class="hero-title">TUTORY SPORTS</h1>
+        <p class="hero-sub">${t.meta.name}</p>
         ${when && html`<p class="hero-when">${when}</p>`}
         <div class="actions hero-cta">
           ${!E.isLocked(t) && t.draw.status !== 'done' && html`<a class="btn primary lg" href="#/sorteio">${t.draw.status === 'live' ? 'Acompanhar sorteio' : 'Iniciar sorteio'} <span class="arrow">→</span></a>`}

@@ -1,4 +1,4 @@
-import { html, useState, useEffect, store, useDoc, useStage, go, toast, playerById, avatarOf, handleError } from './lib.js';
+import { html, useState, useEffect, store, useDoc, useStage, toast, playerById, avatarOf, handleError, setLeaveGuard } from './lib.js';
 import { EditorStage } from '../three/stage.js';
 import { sports } from '../core/sports.js';
 import { useSports } from './sports.js';
@@ -37,24 +37,41 @@ export function EditorPage({ id, account = false }) {
   const t = useDoc();
   const s = useSports();
   const player = account ? (s.profile ? { id: s.profile.id, name: s.profile.name, avatar: s.profile.avatar } : null) : playerById(t, id);
-  const [draft, setDraft] = useState(() => normalizeAvatar(player ? avatarOf(player) : {}));
+  // Quem está logado e é o dono deste jogador salva na própria conta, sem código.
+  const ownAccount = account || (!!player?.userId && player.userId === s.user?.id);
+  const [saved, setSaved] = useState(() => normalizeAvatar(player ? avatarOf(player) : {}));
+  const [draft, setDraft] = useState(saved);
   const [tab, setTab] = useState('base');
   const [meta, setMeta] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState(null); // 'ok' | 'error' | null
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [host, stage] = useStage((el) => new EditorStage(el));
+  const keyOf = (a) => JSON.stringify({ ...a, thumb: null, provisional: false });
+  const dirty = keyOf(draft) !== keyOf(saved);
 
   useEffect(() => { loadGender(draft.gender).then((lib) => setMeta(lib.meta)).catch(handleError); }, [draft.gender]);
   useEffect(() => {
     let live = true;
     setLoading(true);
-    stage.current?.setAvatar(draft, draft.pose)?.then(() => live && setLoading(false)).catch(handleError);
+    const job = stage.current?.setAvatar(draft, draft.pose);
+    if (!job) setLoading(false);
+    else job.then(() => live && setLoading(false)).catch((e) => { if (live) setLoading(false); handleError(e); });
     return () => { live = false; };
-  }, [JSON.stringify({ ...draft, thumb: null })]);
+  }, [keyOf(draft)]);
+  // Protege contra perder alterações: fechar a aba ou trocar de tela pede confirmação.
+  useEffect(() => {
+    if (!dirty || saving) return undefined;
+    const ask = (e) => { e.preventDefault(); e.returnValue = ''; };
+    addEventListener('beforeunload', ask);
+    setLeaveGuard(() => confirm('Você tem alterações no avatar que não foram salvas. Sair mesmo assim?'));
+    return () => { removeEventListener('beforeunload', ask); setLeaveGuard(null); };
+  }, [dirty, saving]);
+  useEffect(() => { if (dirty) setStatus(null); }, [dirty]);
 
   if (!player) return html`<main class="page"><div class="glass empty"><h3>Participante não encontrado</h3><a class="btn" href="#/jogadores">Ver participantes</a></div></main>`;
-  const needsCode = !account && store.remote && !store.admin;
+  const needsCode = !ownAccount && store.remote && !store.admin;
   const patch = (p) => setDraft((d) => ({ ...d, ...p, provisional: false }));
   const setPart = (cat, name) => setDraft((d) => {
     const parts = { ...d.parts, [cat]: name };
@@ -77,14 +94,19 @@ export function EditorPage({ id, account = false }) {
   };
   const save = async () => {
     setSaving(true);
+    setStatus(null);
     try {
-      const thumb = await portrait({ ...draft, thumb: null }, { fresh: true, size: 256 });
-      if (account) await sports.saveAvatar({ ...draft, thumb, provisional: false });
-      else await store.saveAvatar(player.id, { ...draft, thumb, provisional: false }, code);
-      toast('Avatar salvo.', 'ok');
-      go(account ? 'conta' : 'jogadores');
-    } catch (e) { handleError(e); } finally { setSaving(false); }
+      const thumb = await portrait({ ...draft, thumb: null }, { fresh: true, size: 256 }).catch(() => null);
+      const final = { ...draft, thumb, provisional: false };
+      if (ownAccount) await sports.saveAvatar(final);
+      else await store.saveAvatar(player.id, final, code);
+      setSaved(final);
+      setDraft(final);
+      setStatus('ok');
+      toast('Avatar salvo. Ele aparece igual em qualquer aparelho.', 'ok');
+    } catch (e) { setStatus('error'); handleError(e); } finally { setSaving(false); }
   };
+  const back = account || ownAccount ? '#/conta' : '#/jogadores';
   const catalog = meta?.catalog || {};
   const items = (cat) => (catalog[cat] || []).map((x) => [x.name, x.label]);
   const morphGroups = (groups) => groups.map((g) => html`<${Group} key=${g} title=${g}>
@@ -138,10 +160,15 @@ export function EditorPage({ id, account = false }) {
       </div>
       <div class="ed-foot">
         ${needsCode && html`<label class="field code-field">Seu código pessoal
-          <input class="input code-input" autocomplete="off" maxlength="6" value=${code} onInput=${(e) => setCode(e.target.value)} placeholder="ABC123" /></label>`}
+          <input class="input code-input" autocomplete="off" maxlength="6" value=${code} onInput=${(e) => setCode(e.target.value)} placeholder="ABC123" /></label>
+          <p class="muted hint">Tem conta? <a href="#/conta">Entre</a> e peça ao administrador para ligar sua conta a este jogador: aí o avatar salva sem código.</p>`}
+        <p class=${'save-state ' + (saving ? 'busy' : status === 'error' ? 'err' : dirty ? 'dirty' : 'ok')} role="status" aria-live="polite">
+          ${saving ? 'Salvando no banco…' : status === 'error' ? 'Não foi salvo. Confira a mensagem e tente de novo.' : dirty ? 'Alterações ainda não salvas' : status === 'ok' ? 'Salvo ✓' : draft.provisional ? 'Avatar provisório: salve para guardar' : 'Tudo salvo'}
+        </p>
         <div class="actions">
-          <a class="btn ghost" href=${account ? "#/conta" : "#/jogadores"}>Voltar</a>
-          <button class="btn primary grow" disabled=${saving || loading || (needsCode && code.trim().length < 6)} onClick=${save}>${saving ? 'Salvando…' : 'Salvar avatar'}</button>
+          <a class="btn ghost" href=${back}>Voltar</a>
+          ${dirty && html`<button class="btn" disabled=${saving} onClick=${() => setDraft(saved)} title="Volta para a última versão salva">Desfazer alterações</button>`}
+          <button class="btn primary grow" disabled=${saving || (!dirty && !draft.provisional) || (needsCode && code.trim().length < 6)} onClick=${save}>${saving ? 'Salvando…' : 'Salvar avatar'}</button>
         </div>
       </div>
     </aside>

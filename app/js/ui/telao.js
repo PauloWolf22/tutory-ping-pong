@@ -13,7 +13,7 @@ const focusMatch = (t) => (t.display.matchId && t.matches[t.display.matchId]) ||
 
 function Brandbar({ t, right }) {
   return html`<header class="tv-bar">
-    <div class="tv-brand"><img src=${t.meta.logo || 'assets/brand/logo-branco.png'} alt="" /><span>${t.meta.name}</span></div>
+    <div class="tv-brand"><img src=${t.meta.logo || 'assets/brand/logo-branco.png'} alt="" /><span>TUTORY SPORTS · ${t.meta.name}</span></div>
     <div class="tv-right">${right}</div>
   </header>`;
 }
@@ -110,25 +110,37 @@ export function TelaoPage() {
   const [sound, setSoundState] = useState(soundOn());
   const [idle, setIdle] = useState(false);
   const mode = t.display.mode;
+  const [isFull, setFull] = useState(false);
   useEffect(() => {
     let timer;
+    // Toque, clique ou tecla trazem os botões de volta (no celular não existe "mover o mouse").
     const wake = () => {
       setIdle(false);
       clearTimeout(timer);
-      timer = setTimeout(() => setIdle(true), 3000);
+      timer = setTimeout(() => setIdle(true), 3500);
     };
+    const evs = ['pointermove', 'pointerdown', 'touchstart', 'keydown'];
     wake();
-    addEventListener('pointermove', wake);
-    return () => { removeEventListener('pointermove', wake); clearTimeout(timer); };
+    evs.forEach((e) => addEventListener(e, wake, { passive: true }));
+    const onFs = () => { setFull(!!fsElement()); wake(); };
+    document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('webkitfullscreenchange', onFs);
+    return () => {
+      evs.forEach((e) => removeEventListener(e, wake));
+      document.removeEventListener('fullscreenchange', onFs);
+      document.removeEventListener('webkitfullscreenchange', onFs);
+      clearTimeout(timer);
+    };
   }, []);
   const fullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else {
-      const r = document.documentElement.requestFullscreen?.();
-      if (r) r.catch(() => toast('O navegador bloqueou a tela cheia. Pressione F11.'));
-      else toast('Pressione F11 para usar a tela cheia.');
-    }
+    if (fsElement()) { exitFs(); return; }
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req) { toast('Este aparelho não permite tela cheia no navegador. Gire o celular para ver maior.'); return; }
+    const r = req.call(el);
+    if (r?.catch) r.catch(() => toast('O navegador bloqueou a tela cheia.'));
   };
+  const leave = () => { exitFs(); location.hash = '#/'; };
   const screen = {
     home: () => html`<${TvHome} t=${t} />`, draw: () => html`<${TvDraw} t=${t} />`, versus: () => html`<${TvVersus} t=${t} />`,
     score: () => html`<${TvScore} t=${t} />`, bracket: () => html`<${TvBracket} t=${t} />`, champion: () => html`<section class="tv-screen"><${ChampionShow} t=${t} big=${true} exit=${false} /></section>`,
@@ -139,8 +151,16 @@ export function TelaoPage() {
     <div class="tv-stage" key=${key}>${screen()}</div>
     <div class="tv-tools">
       <button class="btn sm" onClick=${() => { setSound(!sound); setSoundState(!sound); }} aria-pressed=${sound}>${sound ? 'Som ligado' : 'Ligar som'}</button>
-      <button class="btn sm" onClick=${fullscreen}>Tela cheia</button>
+      <button class="btn sm" onClick=${fullscreen}>${isFull ? 'Sair da tela cheia' : 'Tela cheia'}</button>
+      <button class="btn sm" onClick=${leave}>Voltar ao app</button>
     </div>
     ${store.remote && !store.online && html`<div class="offline" role="status">Reconectando…</div>`}
   </div>`;
+}
+
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+function exitFs() {
+  if (!fsElement()) return;
+  const r = (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+  r?.catch?.(() => {});
 }

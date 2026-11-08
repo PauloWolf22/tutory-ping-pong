@@ -3,13 +3,18 @@ import { html, render, useState, useEffect, useRef, useLayoutEffect, useMemo, us
 import { store } from '../core/store.js';
 import { UserError } from '../core/engine.js';
 import { avatarFromName, normalizeAvatar, portrait, portraitReady, webglAvailable } from '../three/avatars.js';
+import { sports } from '../core/sports.js';
 
 export { html, render, useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback, store };
 
 // ---------------------------------------------------------------- estado
 export function useDoc() {
   const [, force] = useState(0);
-  useEffect(() => store.subscribe((v) => force(v)), []);
+  useEffect(() => {
+    const a = store.subscribe((v) => force(v));
+    const b = sports.subscribe(() => force((n) => n + 1e6));
+    return () => { a(); b(); };
+  }, []);
   return store.doc;
 }
 
@@ -17,7 +22,11 @@ export function useRoute() {
   const read = () => (location.hash.replace(/^#\/?/, '') || '').split('?')[0].split('/').filter(Boolean);
   const [parts, set] = useState(read());
   useEffect(() => {
-    const fn = () => { set(read()); window.scrollTo(0, 0); };
+    const fn = (e) => {
+      if (leaveGuard && !leaveGuard()) { history.replaceState(null, '', e.oldURL); return; }
+      leaveGuard = null;
+      set(read()); window.scrollTo(0, 0);
+    };
     addEventListener('hashchange', fn);
     return () => removeEventListener('hashchange', fn);
   }, []);
@@ -25,6 +34,10 @@ export function useRoute() {
 }
 
 export const go = (path) => { location.hash = '#/' + path; };
+
+// Uma tela com alterações não salvas pode impedir a troca de rota (o editor de avatar usa).
+let leaveGuard = null;
+export const setLeaveGuard = (fn) => { leaveGuard = fn; };
 
 // Executa uma alteração no campeonato com tratamento de erro para o usuário.
 export function act(fn, okMessage) {
@@ -100,7 +113,12 @@ export function Overlays() {
 }
 
 // ---------------------------------------------------------------- avatares 2D
-export const avatarOf = (player) => (player?.avatar?.v === 2 ? normalizeAvatar(player.avatar) : avatarFromName(player?.name || '?'));
+// Jogador ligado a uma conta usa o avatar da conta; senão, o salvo no campeonato; senão, o provisório pelo nome.
+export const avatarOf = (player) => {
+  const linked = player?.userId && sports.people.get(player.userId)?.avatar;
+  if (linked?.v === 2) return normalizeAvatar(linked);
+  return player?.avatar?.v === 2 ? normalizeAvatar(player.avatar) : avatarFromName(player?.name || '?');
+};
 const initials = (name = '?') => name.trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join('').toUpperCase();
 
 export function Ava({ player, size = 48, kind = 'bust', state = '' }) {

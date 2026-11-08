@@ -1,4 +1,4 @@
 @echo off
-title Tutory Ping Pong Championship
+title Tutory Sports
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0server\server.ps1" %*
 pause

@@ -591,3 +591,19 @@ a.bk-card:hover { border-color: var(--beam); }
   .rank-row { grid-template-columns: 26px minmax(0, 1fr) 44px 30px 30px; }
   .rank-row > :nth-child(6) { display: none; }
 }
+.save-state { font-size: 12.5px; font-weight: 600; margin: 0 0 8px; color: var(--muted); }
+.save-state.ok { color: var(--ok); }
+.save-state.dirty { color: var(--warn); }
+.save-state.err { color: #ff9f9f; }
+.auth { display: grid; gap: 14px; max-width: 520px; }
+.auth-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.auth-btn { display: grid; gap: 2px; text-align: left; padding: 16px 18px; border-radius: 18px; background: var(--glass-hi); border: 1px solid var(--line); color: var(--ice); cursor: pointer; transition: border-color 0.2s, background 0.2s, transform 0.15s; }
+.auth-btn strong { font-size: 17px; letter-spacing: 0.01em; text-transform: uppercase; color: #fff; }
+.auth-btn span { font-size: 12.5px; color: var(--muted); }
+.auth-btn:hover { transform: translateY(-1px); }
+.auth-btn.on { background: rgba(59, 123, 245, 0.22); border-color: var(--beam); }
+.linklike { background: none; border: 0; color: var(--beam-soft); cursor: pointer; font-weight: 600; font-size: 13px; justify-self: center; padding: 6px; }
+.admin-door { margin-top: 18px; font-size: 13px; }
+.admin-door a { color: var(--muted); }
+.temp-pw { font-size: 26px; letter-spacing: 0.12em; padding: 12px 16px; border-radius: 12px; background: rgba(3, 6, 14, 0.6); border: 1px solid var(--line); text-align: center; margin: 10px 0; user-select: all; }
+.hero-sub { color: var(--muted); font-size: clamp(15px, 1.6vw, 19px); font-weight: 600; margin-top: 6px; letter-spacing: 0.02em; }

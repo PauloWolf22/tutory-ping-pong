@@ -455,7 +455,7 @@ export function portrait(raw, { kind = 'bust', size = 256, fresh = false } = {})
       camera.lookAt(0, 0.9, 0);
     }
     renderer.render(scene, camera);
-    const url = renderer.domElement.toDataURL('image/webp', 0.86);
+    const url = encodePortrait(renderer.domElement, fresh);
     avatar.dispose();
     readyPortraits.set(key, url);
     return url;
@@ -463,4 +463,25 @@ export function portrait(raw, { kind = 'bust', size = 256, fresh = false } = {})
   if (!fresh) portraits.set(key, task);
   queue = task.catch(() => null);
   return task;
+}
+
+// Foto compacta para salvar no banco. Safari antigo e alguns iPhones não geram WEBP e
+// devolvem PNG, até 10 vezes maior: aí vai JPEG sobre o fundo dos cards, reduzindo até caber.
+const THUMB_LIMIT = 12000;
+export function encodePortrait(canvas, compact) {
+  const webp = canvas.toDataURL('image/webp', 0.86);
+  if (webp.startsWith('data:image/webp') && (!compact || webp.length <= THUMB_LIMIT)) return webp;
+  let size = canvas.width;
+  for (const q of [0.82, 0.7, 0.6, 0.5]) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const g = c.getContext('2d');
+    g.fillStyle = '#0b1530';
+    g.fillRect(0, 0, size, size);
+    g.drawImage(canvas, 0, 0, size, size);
+    const url = c.toDataURL('image/jpeg', q);
+    if (!compact || url.length <= THUMB_LIMIT) return url;
+    size = Math.max(128, Math.round(size * 0.8));
+  }
+  return null;
 }

@@ -254,7 +254,8 @@ begin
   return jsonb_build_object(
     'profiles', coalesce((
       select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'nick', p.nick, 'gender', p.gender, 'status', p.status,
-        'email', u.email, 'created_at', p.created_at) order by p.status = 'pending' desc, p.created_at desc)
+        'email', u.email, 'created_at', p.created_at,
+        'reset', exists (select 1 from private.reset_requests r where r.email = lower(u.email))) order by p.status = 'pending' desc, p.created_at desc)
       from public.profiles p join auth.users u on u.id = p.id
     ), '[]'::jsonb),
     'results', coalesce((
@@ -327,6 +328,50 @@ begin
   return jsonb_build_object('results', v_results, 'awards', v_awards);
 end $$;
 
+-- ---------------------------------------------------------------- nova senha sem servidor de e-mail
+-- O e-mail padrão do Supabase só envia para membros do projeto. Então a pessoa pede uma senha
+-- nova, o administrador vê o pedido e gera uma senha provisória para entregar pessoalmente.
+create table if not exists private.reset_requests (
+  email text primary key,
+  created_at timestamptz not null default now()
+);
+
+create or replace function public.sp_request_reset(p_email text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_email text := lower(btrim(coalesce(p_email, '')));
+  v_ip text := private.client_ip();
+begin
+  if private.is_blocked(v_ip) then return jsonb_build_object('error', 'Muitas tentativas. Aguarde 30 segundos.'); end if;
+  perform private.register_failure(v_ip); -- limita pedidos em sequência
+  -- Mesma resposta exista ou não a conta, para não revelar quem tem cadastro.
+  if exists (select 1 from auth.users where lower(email) = v_email) then
+    insert into private.reset_requests (email) values (v_email) on conflict (email) do update set created_at = now();
+  end if;
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.sp_admin_reset_password(p_token text, p_id uuid) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_alphabet constant text := 'abcdefghjkmnpqrstuvwxyz23456789';
+  v_bytes bytea := extensions.gen_random_bytes(10);
+  v_pw text := '';
+  v_email text;
+begin
+  if not private.is_admin(p_token) then
+    return jsonb_build_object('unauthorized', true, 'error', 'Sessão de administrador expirada. Entre novamente.');
+  end if;
+  for i in 0..9 loop
+    v_pw := v_pw || substr(v_alphabet, get_byte(v_bytes, i) % length(v_alphabet) + 1, 1);
+  end loop;
+  update auth.users set encrypted_password = extensions.crypt(v_pw, extensions.gen_salt('bf', 10)), updated_at = now()
+  where id = p_id returning email into v_email;
+  if v_email is null then return jsonb_build_object('error', 'Conta não encontrada.'); end if;
+  delete from private.reset_requests where email = lower(v_email);
+  return jsonb_build_object('password', v_pw, 'email', v_email);
+end $$;
+
 -- ---------------------------------------------------------------- permissões das funções
 do $$
 declare f text;
@@ -335,7 +380,8 @@ begin
     'sp_save_profile(text, text, text, text)', 'sp_save_my_avatar(jsonb)',
     'sp_report_result(text, uuid, boolean, text, text, date)', 'sp_cancel_result(uuid)',
     'sp_ranking(text, text)', 'sp_admin_pending(text)', 'sp_admin_set_status(text, uuid, text)',
-    'sp_admin_decide(text, uuid, boolean)', 'sp_admin_delete_result(text, uuid)', 'sp_admin_import(text, jsonb, jsonb)'
+    'sp_admin_decide(text, uuid, boolean)', 'sp_admin_delete_result(text, uuid)', 'sp_admin_import(text, jsonb, jsonb)',
+    'sp_request_reset(text)', 'sp_admin_reset_password(text, uuid)'
   ] loop
     execute format('revoke all on function public.%s from public', f);
     execute format('grant execute on function public.%s to anon, authenticated', f);

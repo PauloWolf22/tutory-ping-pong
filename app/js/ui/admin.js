@@ -28,7 +28,7 @@ function Login() {
   };
   return html`<main class="page login-page"><form class="glass card login" novalidate onSubmit=${submit}>
     <span class="overline">Administração</span>
-    <h1>${setup ? 'Crie a senha do administrador' : 'Entrar no painel'}</h1>
+    <h1>${setup ? 'Crie a senha do administrador' : 'Painel do administrador'}</h1>
     <p class="muted">${setup ? 'É o primeiro acesso. Essa senha controla sorteio, resultados e regras do campeonato.' : 'Participantes e telão não precisam de senha para acompanhar.'}</p>
     ${store.mode === 'local' && html`<p class="notice warn">Modo local: sem o servidor, os dados ficam só neste navegador e a senha é apenas uma trava de uso, não uma proteção real.</p>`}
     ${offline && html`<p class="notice warn" role="alert">O servidor do campeonato está desligado. Dê dois cliques em <b>start.bat</b>, na pasta do projeto, e tente de novo.</p>`}
@@ -37,6 +37,7 @@ function Login() {
     <label class="show-pass"><input type="checkbox" checked=${show} onChange=${(e) => setShow(e.target.checked)} /> Mostrar senha</label>
     ${error && html`<p class="form-error" role="alert">${error}</p>`}
     <button class="btn primary lg" disabled=${busy || !password}>${busy ? 'Aguarde…' : setup ? 'Criar senha e entrar' : 'Entrar'}</button>
+    <p class="admin-door" style="text-align:center"><a href="#/conta">Não é administrador? Entre com sua conta →</a></p>
   </form></main>`;
 }
 

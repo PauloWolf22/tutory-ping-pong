@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><title>Testes do Tutory Sports</title>
-<style>body{font:14px system-ui;background:#0b0f19;color:#dfe7ff;padding:24px}li.ok{color:#54d1a0}li.ko{color:#ff8a8a}</style></head>
+<style>body{font:14px system-ui;background:#0b0f19;color:#dfe7ff;padding:24px}li.ok{color:#54d1a0}li.ko{color:#ff8a8a}</style>
+<script type="importmap">{ "imports": { "three": "../js/vendor/three/three.module.min.js" } }</script></head>
 <body><h1>Testes do Tutory Sports</h1><p>Contas, amistosos, aprovação, ranking e envio do campeonato, com banco simulado (mesmas regras de supabase/sports.sql).</p>
 <h2 id="sum">rodando…</h2><ul id="out"></ul>
 <script type="module">
@@ -131,6 +132,46 @@ await test('Campeonato encerrado vai ao ranking com título, sem duplicar', asyn
   const gained = after1.reduce((s, x) => s + x.points, 0) - before;
   eq(gained, plan.items.length * 4 + plan.awards.reduce((s, a) => s + (a.place === 'campeao' ? 10 : 5), 0), 'pontos');
   if (champ.userId) eq(after1.find((x) => x.id === champ.userId).titles, 1, 'título');
+});
+await test('Avatar salvo na conta volta igual depois de sair e entrar', async () => {
+  await sports.signIn('caio@x.com', 'segredo1');
+  const av = { v: 2, gender: 'male', skin: 'negra', morph: { 'head-oval': 0.4 }, parts: { hair: 'afro01', beard: 'grinsegold_full_beard' }, colors: { hair: '#141010' }, height: 1.04, thumb: 'data:image/jpeg;base64,BBB' };
+  await sports.saveAvatar(av);
+  await sports.signOut();
+  eq(sports.profile, null);
+  await sports.signIn('caio@x.com', 'segredo1');
+  eq(sports.profile.avatar, av);
+  eq(sports.people.get(ids.caio).avatar.parts.hair, 'afro01', 'cache das contas');
+});
+await test('Jogador do campeonato ligado à conta mostra o avatar da conta', async () => {
+  const { avatarOf } = await import('../js/ui/lib.js');
+  eq(avatarOf({ name: 'Caio Reis', userId: ids.caio }).parts.hair, 'afro01');
+  eq(avatarOf({ name: 'Sem conta' }).provisional, true);
+});
+await test('Esqueci a senha: pedido não revela se a conta existe; admin gera provisória', async () => {
+  await sports.signOut();
+  eq(await sports.need().requestReset('ninguem@x.com'), { ok: true });
+  eq(await sports.need().requestReset('bia@x.com'), { ok: true });
+  await store.login('certa');
+  const bia = (await sports.admin((d, t) => d.adminPending(t))).profiles.find((p) => p.email === 'bia@x.com');
+  eq(bia.reset, true);
+  const r = await sports.admin((d, t) => d.adminResetPassword(t, bia.id));
+  await rejects(sports.signIn('bia@x.com', 'segredo1'), /incorretos/);
+  await sports.signIn('bia@x.com', r.password);
+  eq(sports.user.id, ids.bia);
+  await sports.need().changePassword('segredo1');
+  await store.logout();
+});
+await test('Foto do avatar cabe no banco mesmo sem WEBP (iPhone antigo)', async () => {
+  const { encodePortrait } = await import('../js/three/avatars.js');
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  for (let i = 0; i < 4000; i++) { g.fillStyle = `hsl(${i % 360},70%,${30 + (i % 40)}%)`; g.fillRect((i * 37) % 256, (i * 91) % 256, 6, 6); }
+  const orig = c.toDataURL.bind(c);
+  c.toDataURL = (type, q) => (type === 'image/webp' ? orig('image/png') : orig(type, q)); // Safari sem WEBP devolve PNG
+  const url = encodePortrait(c, true);
+  eq(url.startsWith('data:image/jpeg'), true, 'formato');
+  eq(url.length <= 12000, true, 'tamanho ' + url.length);
 });
 await test('Sessão de administrador expirada é recusada', async () => {
   await store.logout();
