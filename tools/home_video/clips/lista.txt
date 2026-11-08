@@ -1,0 +1,14 @@
+01_jj_faixa_preta 6263407 https://videos.pexels.com/video-files/6263407/6263407-uhd_2560_1440_30fps.mp4
+02_jj_faixa_branco 6765286 https://videos.pexels.com/video-files/6765286/6765286-uhd_2560_1440_25fps.mp4
+03_jj_luta 7988885 https://videos.pexels.com/video-files/7988885/7988885-uhd_2732_1440_25fps.mp4
+04_pp_rebate 4115327 https://videos.pexels.com/video-files/4115327/4115327-uhd_2732_1440_25fps.mp4
+05_pp_mesa 29323695 https://videos.pexels.com/video-files/29323695/12640888_1920_1080_30fps.mp4
+06_fut_chute 30147551 https://videos.pexels.com/video-files/30147551/12927759_1920_1080_60fps.mp4
+07_fut_penalti 15436959 https://videos.pexels.com/video-files/15436959/15436959-hd_1906_1080_30fps.mp4
+08_fut_estadio 11918917 https://videos.pexels.com/video-files/11918917/11918917-hd_1920_1080_60fps.mp4
+09_tenis_saque 10340712 https://videos.pexels.com/video-files/10340712/10340712-uhd_2732_1440_25fps.mp4
+10_gaming_foco 8127940 https://videos.pexels.com/video-files/8127940/uhd_25fps.mp4
+11_esports_arena 7914809 https://videos.pexels.com/video-files/7914809/7914809-hd_1920_1080_30fps.mp4
+12_gaming_controle 8127937 https://videos.pexels.com/video-files/8127937/8127937-uhd_2560_1440_25fps.mp4
+13_trofeu 7005930 https://videos.pexels.com/video-files/7005930/7005930-hd_1920_1080_30fps.mp4
+14_comemoracao 9517841 https://videos.pexels.com/video-files/9517841/9517841-uhd_2732_1440_24fps.mp4

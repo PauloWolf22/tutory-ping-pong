@@ -1,6 +1,5 @@
-import { html, useEffect, useDoc, Ava, store, useStage, avatarOf, playerById, displayName } from './lib.js';
+import { html, useEffect, useRef, useState, useDoc, Ava, store, avatarOf, playerById, displayName } from './lib.js';
 import * as E from '../core/engine.js';
-import { TableStage } from '../three/stage.js';
 import { avatarFromName, webglAvailable } from '../three/avatars.js';
 
 export function heroPair(t) {
@@ -43,11 +42,25 @@ export function FlowSteps({ t }) {
   return html`<ol class="flow">${steps.map(([label, href, done], i) => html`<li key=${label} class=${done ? 'done' : i === current ? 'now' : ''}><a href=${href}><i>${String(i + 1).padStart(2, '0')}</i>${label}</a></li>`)}</ol>`;
 }
 
+// Vídeo de abertura (tools/home_video): carrega por partes, sem som, em loop. Quem pede menos movimento
+// ou economia de dados vê só a imagem de capa; se o vídeo falhar, a capa continua.
+function HeroVideo() {
+  const ref = useRef(null);
+  const [paused, setPaused] = useState(false);
+  const saveData = typeof navigator !== "undefined" && navigator.connection?.saveData;
+  const poster = "assets/video/home-poster.jpg";
+  if (saveData) return html`<img class="hero-video" src=${poster} alt="" />`;
+  const toggle = () => { const v = ref.current; if (!v) return; if (v.paused) { v.play(); setPaused(false); } else { v.pause(); setPaused(true); } };
+  // toca sempre, mudo e em loop; o botão de pausa atende quem prefere menos movimento
+  return html`<video ref=${ref} class="hero-video" autoplay muted loop playsinline preload="metadata" poster=${poster} aria-hidden="true">
+    <source src="assets/video/home-720.mp4" type="video/mp4" media="(max-width: 900px)" />
+    <source src="assets/video/home.mp4" type="video/mp4" />
+  </video>
+  <button class="hero-pause" onClick=${toggle} aria-label=${paused ? "Tocar o vídeo" : "Pausar o vídeo"}>${paused ? "▶" : "❚❚"}</button>`;
+}
+
 export function HomePage() {
   const t = useDoc();
-  const [host, stage] = useStage((el) => new TableStage(el));
-  const [pa, pb] = heroPair(t);
-  useEffect(() => { stage.current?.setPlayers(pa, pb); }, [JSON.stringify([pa, pb])]);
   const status = E.tournamentStatus(t);
   const stats = E.computeStats(t);
   const next = E.nextMatch(t);
@@ -58,8 +71,8 @@ export function HomePage() {
   const when = [reg.date && reg.date.split('-').reverse().join('/'), reg.time, reg.location].filter(Boolean).join(' · ');
   return html`<main>
     <section class="hero">
-      <div class="hero-stage stage-host" ref=${host}></div>
-      <div class="hero-fade"></div>
+      <${HeroVideo} />
+      <div class="hero-fade video"></div>
       <div class="hero-copy">
         ${t.meta.logo && html`<img class="hero-logo" src=${t.meta.logo} alt="" />`}
         <div class="hero-tags"><span class=${'chip ' + (status.key === 'running' || status.key === 'draw' ? 'live' : status.key === 'finished' ? 'champion' : 'next')}>${status.label}</span><span class="chip plain">${t.meta.edition}</span></div>
