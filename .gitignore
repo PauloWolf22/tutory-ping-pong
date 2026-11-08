@@ -5,3 +5,4 @@ app/assets/humans/*.blend
 
 # clipes originais do Pexels (fonte do vídeo da home; o vídeo final fica em app/assets/video)
 tools/home_video/clips/*.mp4
+backups/

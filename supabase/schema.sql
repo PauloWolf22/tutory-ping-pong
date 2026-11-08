@@ -229,6 +229,9 @@ language plpgsql security definer set search_path = '' as $$
 declare
   v_ip text := private.client_ip();
   v_rev bigint;
+  v_doc jsonb;
+  v_cat text;
+  v_found boolean;
 begin
   if jsonb_typeof(p_avatar) is distinct from 'object' or octet_length(p_avatar::text) > 20000 then
     return jsonb_build_object('error', 'Dados do avatar inválidos.');
@@ -242,20 +245,26 @@ begin
       return jsonb_build_object('error', 'Código do jogador incorreto.');
     end if;
   end if;
-  if not exists (
-    select 1 from public.tournament t, jsonb_array_elements(t.doc -> 'players') as e
-    where t.id = 1 and e ->> 'id' = p_id
-  ) then
+  -- Formato com categorias (app/js/core/event.js): os inscritos ficam em doc.comps.<categoria>.players.
+  select t.doc into v_doc from public.tournament t where t.id = 1 for update;
+  v_found := false;
+  for v_cat in select jsonb_object_keys(coalesce(v_doc -> 'comps', '{}'::jsonb)) loop
+    if exists (select 1 from jsonb_array_elements(v_doc -> 'comps' -> v_cat -> 'players') e where e ->> 'id' = p_id) then
+      v_found := true;
+      v_doc := jsonb_set(v_doc, array['comps', v_cat, 'players'], (
+        select jsonb_agg(
+          case when x.e ->> 'id' = p_id then x.e || jsonb_build_object('avatar', p_avatar) else x.e end
+          order by x.ord
+        )
+        from jsonb_array_elements(v_doc -> 'comps' -> v_cat -> 'players') with ordinality as x(e, ord)
+      ));
+    end if;
+  end loop;
+  if not v_found then
     return jsonb_build_object('error', 'Jogador não encontrado.');
   end if;
   update public.tournament t set
-    doc = jsonb_set(t.doc, '{players}', (
-      select jsonb_agg(
-        case when x.e ->> 'id' = p_id then x.e || jsonb_build_object('avatar', p_avatar) else x.e end
-        order by x.ord
-      )
-      from jsonb_array_elements(t.doc -> 'players') with ordinality as x(e, ord)
-    )),
+    doc = v_doc,
     rev = t.rev + 1,
     updated_at = now()
   where t.id = 1

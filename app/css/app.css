@@ -39,6 +39,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .nav-links a:hover { color: var(--text); background: var(--glass-hi); }
 .nav-links a.on { color: #fff; background: rgba(59, 123, 245, 0.2); box-shadow: inset 0 0 0 1px rgba(59, 123, 245, 0.32); }
 @media (max-width: 1440px) { .nav-links { gap: 2px; } .nav-links a { padding: 8px 10px; font-size: 13px; } }
+@media (max-width: 1360px) { .nav { gap: 14px; } .nav-links a { padding: 7px 8px; font-size: 12.5px; } }
+@media (max-width: 1180px) { .nav-links { mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); } }
 .nav-right { display: flex; gap: 8px; align-items: center; flex: none; }
 .page { width: min(1320px, 100%); margin: 0 auto; padding: clamp(18px, 3vw, 36px) clamp(16px, 3vw, 36px) 72px; }
 .page-head { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 26px; }
@@ -144,3 +146,23 @@ select.input option { background: #0b1222; }
 .local-bar { margin: 0; padding: 7px 16px; text-align: center; font-size: 12.5px; font-weight: 600; color: #f6e0a6; background: rgba(242, 193, 78, 0.1); border-bottom: 1px solid rgba(242, 193, 78, 0.28); }
 .adm-btn { font-weight: 800; letter-spacing: 0.06em; border-color: rgba(201, 169, 110, 0.55); }
 .adm-btn.on { background: rgba(201, 169, 110, 0.16); }
+
+/* ------------------------------------------------------------ categoria do campeonato */
+.catbar { width: min(1320px, 100%); margin: 0 auto; padding: 14px clamp(16px, 3vw, 36px) 0; }
+.catbar-in { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 8px 8px 8px 18px; border-radius: 99px; background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3); }
+.catbar-event { font-family: var(--font-title); font-weight: 700; font-size: 14px; letter-spacing: 0.02em; color: var(--ice); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-switch { display: inline-flex; gap: 4px; padding: 3px; border-radius: 99px; background: rgba(2, 3, 8, 0.45); border: 1px solid var(--line); }
+.cat-tab { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--muted); font: 800 11.5px/1 var(--font); letter-spacing: 0.18em; padding: 9px 16px; border-radius: 99px; cursor: pointer; transition: background 0.25s var(--ease), color 0.25s var(--ease); }
+.cat-tab small { font-size: 11px; letter-spacing: 0; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: var(--glass-hi); color: var(--ice); }
+.cat-tab:hover { color: var(--white); }
+.cat-tab.on { color: var(--white); background: linear-gradient(135deg, var(--electric), #1d5ef0); box-shadow: 0 6px 22px -8px rgba(59, 123, 245, 0.8); }
+.cat-tab.on small { background: rgba(255, 255, 255, 0.18); color: var(--white); }
+.cat-tag { font: 800 11.5px/1 var(--font); letter-spacing: 0.2em; padding: 9px 16px; border-radius: 99px; color: var(--white); background: rgba(59, 123, 245, 0.16); border: 1px solid rgba(126, 166, 248, 0.35); }
+.g-tag { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font: 800 10.5px/1 var(--font); color: var(--white); background: rgba(59, 123, 245, 0.28); border: 1px solid rgba(126, 166, 248, 0.45); vertical-align: middle; }
+.g-tag.f { background: rgba(201, 169, 110, 0.22); border-color: rgba(231, 211, 168, 0.45); }
+@media (max-width: 560px) {
+  .catbar-in { border-radius: var(--r); padding: 8px; }
+  .catbar-event { width: 100%; padding: 2px 8px 0; font-size: 13px; }
+  .cat-switch { width: 100%; }
+  .cat-tab { flex: 1; justify-content: center; padding: 10px 8px; letter-spacing: 0.12em; }
+}

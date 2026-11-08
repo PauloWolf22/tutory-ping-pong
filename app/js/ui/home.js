@@ -75,7 +75,7 @@ export function HomePage() {
       <div class="hero-fade video"></div>
       <div class="hero-copy">
         ${t.meta.logo && html`<img class="hero-logo" src=${t.meta.logo} alt="" />`}
-        <div class="hero-tags"><span class=${'chip ' + (status.key === 'running' || status.key === 'draw' ? 'live' : status.key === 'finished' ? 'champion' : 'next')}>${status.label}</span><span class="chip plain">${t.meta.edition}</span></div>
+        <div class="hero-tags"><span class=${'chip ' + (status.key === 'running' || status.key === 'draw' ? 'live' : status.key === 'finished' ? 'champion' : 'next')}>${status.label}</span>${t.meta.edition && html`<span class="chip plain">${t.meta.edition}</span>`}</div>
         <h1 class="hero-title">TUTORY SPORTS</h1>
         <p class="hero-sub">${t.meta.name}</p>
         ${when && html`<p class="hero-when">${when}</p>`}
@@ -84,6 +84,7 @@ export function HomePage() {
           ${(t.draw.status === 'done') && html`<a class="btn primary lg" href="#/chave">Ver chaveamento <span class="arrow">→</span></a>`}
           ${t.draw.status !== 'done' && html`<a class="btn lg" href="#/chave">Ver chaveamento</a>`}
           <a class="btn lg" href="#/jogadores">${store.admin ? 'Cadastrar participantes' : 'Participantes'}</a>
+          <a class="btn lg" href="#/campeonatos">Campeonatos</a>
         </div>
       </div>
       <div class="hero-stats glass">

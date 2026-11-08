@@ -4,18 +4,20 @@ import { store } from '../core/store.js';
 import { UserError } from '../core/engine.js';
 import { avatarFromName, normalizeAvatar, portrait, portraitReady, webglAvailable } from '../three/avatars.js';
 import { sports } from '../core/sports.js';
+import { CAT_LABEL } from '../core/event.js';
 
 export { html, render, useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback, store };
 
 // ---------------------------------------------------------------- estado
-export function useDoc() {
+// Campeonato da categoria escolhida neste aparelho (ou da categoria pedida). Ver core/event.js.
+export function useDoc(cat) {
   const [, force] = useState(0);
   useEffect(() => {
     const a = store.subscribe((v) => force(v));
     const b = sports.subscribe(() => force((n) => n + 1e6));
     return () => { a(); b(); };
   }, []);
-  return store.doc;
+  return store.view(cat || undefined);
 }
 
 export function useRoute() {
@@ -117,7 +119,7 @@ export function Overlays() {
 export const avatarOf = (player) => {
   const linked = player?.userId && sports.people.get(player.userId)?.avatar;
   if (linked?.v === 2) return normalizeAvatar(linked);
-  return player?.avatar?.v === 2 ? normalizeAvatar(player.avatar) : avatarFromName(player?.name || '?');
+  return player?.avatar?.v === 2 ? normalizeAvatar(player.avatar) : avatarFromName(player?.name || '?', { m: 'male', f: 'female' }[player?.gender]);
 };
 const initials = (name = '?') => name.trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join('').toUpperCase();
 
@@ -177,3 +179,26 @@ export function useMediaQuery(q) {
   }, [q]);
   return m;
 }
+
+// ---------------------------------------------------------------- categoria do campeonato
+// Faixa sob o menu: nome do evento e a categoria em foco. Com duas categorias, alterna entre elas neste aparelho.
+export function CatBar() {
+  const t = useDoc();
+  if (!t?.comps) return null;
+  const cats = Object.keys(t.comps);
+  return html`<div class="catbar" role="region" aria-label="Categoria do campeonato">
+    <div class="catbar-in">
+      <span class="catbar-event">${t.event.name}</span>
+      ${cats.length > 1
+        ? html`<div class="cat-switch" role="tablist" aria-label="Categoria">
+            ${cats.map((c) => html`<button key=${c} role="tab" aria-selected=${c === t.cat} class=${'cat-tab ' + c + (c === t.cat ? ' on' : '')} onClick=${() => store.setCat(c)}>
+              ${CAT_LABEL[c].toUpperCase()}<small>${t.comps[c].players.length}</small></button>`)}
+          </div>`
+        : html`<span class=${'cat-tag ' + t.cat}>${CAT_LABEL[t.cat].toUpperCase()}</span>`}
+    </div>
+  </div>`;
+}
+
+// Selo pequeno da categoria de uma pessoa (no misto, para identificar quem é de qual categoria).
+export const GenderTag = ({ gender }) => (gender === 'm' || gender === 'f')
+  ? html`<span class=${'g-tag ' + gender} title=${CAT_LABEL[gender]}>${gender === 'm' ? 'M' : 'F'}</span>` : null;

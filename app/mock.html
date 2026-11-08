@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tutory Sports (banco simulado)</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/screens.css">
+  <script type="importmap">{ "imports": { "three": "./js/vendor/three/three.module.min.js" } }</script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    // O app inteiro sobre um banco simulado na memória (nada vai para o Supabase nem para data/).
+    // ?visitor=1 abre sem o administrador.
+    const db = {
+      rev: 0, doc: null,
+      async load() { return { rev: this.rev, doc: this.doc && structuredClone(this.doc) }; },
+      async currentRev() { return this.rev; }, listen() {},
+      async login() { return 'tok'; }, async session() { return true; }, async logout() {},
+      async playerCode() { return 'ABC123'; },
+      async saveAvatar(tk, id, code, avatar) { for (const c of Object.values(this.doc.comps)) { const p = c.players.find((x) => x.id === id); if (p) p.avatar = avatar; } return ++this.rev; },
+      async save(t, rev, doc) { this.doc = JSON.parse(JSON.stringify(doc)); return { httpStatus: 200, rev: ++this.rev }; },
+    };
+    globalThis.__tutoryTestCloud = db;
+    window.__db = db;
+    await import('./js/main.js');
+    const { store } = await import('./js/ui/lib.js');
+    window.__store = store;
+    const wait = () => new Promise((r) => { const i = setInterval(() => { if (store.doc) { clearInterval(i); r(); } }, 30); });
+    await wait();
+    if (new URLSearchParams(location.search).get('visitor') !== '1') await store.login('x');
+  </script>
+</body>
+</html>

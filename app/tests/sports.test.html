@@ -29,6 +29,7 @@ const cloud = {
   async save(t, rev, doc) { this.doc = structuredClone(doc); return { httpStatus: 200, rev: ++this.rev }; },
 };
 sessionStorage.clear();
+store.setToken(null); // o Store lê o token ao ser importado: uma sessão anterior nesta aba não pode entrar como administrador
 await store.init({ cloud, pollMs: 1e7 });
 const db = createMockSportsDb();
 await sports.init(db);
@@ -116,10 +117,10 @@ await test('Campeonato encerrado vai ao ranking com título, sem duplicar', asyn
     E.startDraw(t); while (t.draw.status === 'live') E.drawNext(t);
     let m; while ((m = E.nextMatch(t))) E.saveGames(t, m.id, [[11, 5], [11, 7]]);
   });
-  const t = store.doc;
+  const t = store.view();
   store.update((d) => { for (const p of d.players) { const k = { 'Ana Souza': 'ana', 'Bia Lima': 'bia', 'Caio Reis': 'caio' }[p.name]; if (k) p.userId = ids[k]; } });
-  const plan = championshipImport(store.doc, { key: 'pp-1', gameWins: E.gameWins, champion: E.champion(store.doc), vice: E.viceChampion(store.doc) });
-  const finished = Object.values(store.doc.matches).filter((m) => !m.bye && m.winner && m.p[0] && m.p[1]).length;
+  const plan = championshipImport(store.view(), { key: 'pp-1', gameWins: E.gameWins, champion: E.champion(store.view()), vice: E.viceChampion(store.view()) });
+  const finished = Object.values(store.view().matches).filter((m) => !m.bye && m.winner && m.p[0] && m.p[1]).length;
   eq(plan.items.length + plan.skipped, finished, 'jogos');
   eq(plan.items.every((i) => /^\d+ x \d+$/.test(i.score)), true, 'placar');
   const before = (await db.ranking('pingpong', null)).reduce((s, x) => s + x.points, 0);
@@ -128,7 +129,7 @@ await test('Campeonato encerrado vai ao ranking com título, sem duplicar', asyn
   await sports.admin((d, tk) => d.adminImport(tk, plan.items, plan.awards));
   const after2 = await db.ranking('pingpong', null);
   eq(after1, after2, 'reenvio');
-  const champ = E.champion(store.doc);
+  const champ = E.champion(store.view());
   const gained = after1.reduce((s, x) => s + x.points, 0) - before;
   eq(gained, plan.items.length * 4 + plan.awards.reduce((s, a) => s + ({ campeao: 10, vice: 5, terceiro: 3, participacao: 1 })[a.place], 0), 'pontos');
   eq(plan.awards.filter((a) => a.place === 'participacao').length, 3, 'participação de quem jogou e tem conta');

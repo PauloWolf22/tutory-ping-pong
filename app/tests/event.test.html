@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Testes de eventos e categorias</title>
+<style>body{font:14px/1.5 system-ui;background:#0a0d14;color:#d0ddef;padding:24px;max-width:960px;margin:auto}h1{font-size:20px}.ok{color:#5fd38d}.ko{color:#ff7b7b;font-weight:700}li{list-style:none}#sum{font-size:18px;font-weight:700;margin:12px 0}</style></head>
+<body><h1>Campeonatos masculinos, femininos e mistos</h1><div id="sum"></div><ul id="out"></ul>
+<script type="module">
+// Critérios de aceitação da fase 5 (master prompt, seção 6): motor + Store sobre banco simulado.
+import * as E from '../js/core/engine.js';
+import * as V from '../js/core/event.js';
+import { store } from '../js/core/store.js';
+const out = document.getElementById('out');
+let pass = 0, failed = 0;
+const failures = [];
+async function test(name, fn) {
+  try { await fn(); pass++; out.insertAdjacentHTML('beforeend', `<li class="ok">✓ ${name}</li>`); }
+  catch (e) { failed++; failures.push(name + ': ' + e.message); out.insertAdjacentHTML('beforeend', `<li class="ko">✗ ${name} — ${e.message}</li>`); }
+}
+const eq = (a, b, m = '') => { const x = JSON.stringify(a), y = JSON.stringify(b); if (x !== y) throw new Error(`${m} esperado ${y}, veio ${x}`); };
+const ok = (v, m = 'falso') => { if (!v) throw new Error(m); };
+const throws = (fn, re) => { try { fn(); } catch (e) { if (!(e instanceof E.UserError)) throw e; if (re && !re.test(e.message)) throw new Error('mensagem: ' + e.message); return; } throw new Error('deveria falhar'); };
+function seeded(seed) { let s = seed; return (n) => { s = (s * 1664525 + 1013904223) >>> 0; return s % n; }; }
+const root = (format) => { const { comps, ...event } = V.newEvent({ format, name: 'Teste' }); return { schema: 2, event, comps, active: Object.keys(comps)[0], history: [], football: {} }; };
+const add = (t, names, gender) => names.forEach((name) => E.addPlayer(t, { name, gender }));
+const draw = (t, seed = 3) => { E.startDraw(t); const r = seeded(seed); while (t.draw.status === 'live') E.drawNext(t, null, r); };
+const playAll = (t) => { let m, g = 0; while ((m = E.nextMatch(t)) && g++ < 200) E.saveGames(t, m.id, [[11, 5], [11, 7]]); };
+const M = ['Bruno', 'Caio', 'Davi', 'Enzo', 'Fábio'];
+const F = ['Ana', 'Bia', 'Carla', 'Duda', 'Eva', 'Flávia', 'Gabi'];
+const inBracket = (t) => Object.values(t.matches).flatMap((m) => m.p).filter(Boolean);
+
+await test('1. Masculino: só aceita inscrição masculina e sorteia sozinho', () => {
+  const r = root('m');
+  eq(V.categories(r), ['m']);
+  const t = r.comps.m;
+  add(t, M);
+  ok(t.players.every((p) => p.gender === 'm'), 'categoria gravada');
+  throws(() => E.addPlayer(t, { name: 'Ana', gender: 'f' }), /feminino/);
+  draw(t);
+  eq(new Set(inBracket(t)).size, M.length);
+  playAll(t);
+  ok(E.champion(t), 'campeão');
+});
+
+await test('2. Feminino: só aceita inscrição feminina e sorteia sozinho', () => {
+  const r = root('f');
+  const t = r.comps.f;
+  add(t, F);
+  throws(() => E.addPlayer(t, { name: 'Bruno', gender: 'm' }), /masculino/);
+  draw(t);
+  eq(new Set(inBracket(t)).size, F.length);
+  playAll(t);
+  ok(E.champion(t), 'campeã');
+});
+
+await test('3. Evento com duas categorias: dois chaveamentos separados', () => {
+  const r = root('mf');
+  eq(V.categories(r), ['m', 'f']);
+  add(r.comps.m, M); add(r.comps.f, F);
+  draw(r.comps.m, 5);
+  eq(r.comps.f.draw.status, 'idle', 'sorteio do feminino não andou junto');
+  draw(r.comps.f, 9);
+  const ids = (c) => new Set(r.comps[c].players.map((p) => p.id));
+  ok(inBracket(r.comps.m).every((id) => ids('m').has(id)), 'masculino só com homens');
+  ok(inBracket(r.comps.f).every((id) => ids('f').has(id)), 'feminino só com mulheres');
+  eq(r.comps.m.bracket.size, 8); eq(r.comps.f.bracket.size, 8);
+  // mesmos ids de partida em categorias diferentes não se confundem: cada uma tem a sua lista
+  ok(r.comps.m.matches !== r.comps.f.matches);
+});
+
+await test('4. Misto: um sorteio integrado com as duas categorias', () => {
+  const r = root('misto');
+  const t = r.comps.misto;
+  add(t, M.slice(0, 4), 'm'); add(t, F.slice(0, 4), 'f');
+  eq(t.players.map((p) => p.gender).join(''), 'mmmmffff');
+  draw(t);
+  eq(new Set(inBracket(t)).size, 8);
+  playAll(t);
+  ok(E.champion(t), 'campeão');
+});
+
+await test('5. Resultados de uma categoria não mexem na outra', () => {
+  const r = root('mf');
+  add(r.comps.m, M); add(r.comps.f, F);
+  draw(r.comps.m); draw(r.comps.f);
+  const before = JSON.stringify(r.comps.f.matches);
+  playAll(r.comps.m);
+  eq(JSON.stringify(r.comps.f.matches), before, 'feminino intacto');
+  ok(E.champion(r.comps.m) && !E.champion(r.comps.f));
+});
+
+await test('6. Histórico: evento encerrado fica com as duas categorias e os pódios', () => {
+  const r = root('mf');
+  add(r.comps.m, M); add(r.comps.f, F);
+  draw(r.comps.m); draw(r.comps.f); playAll(r.comps.m); playAll(r.comps.f);
+  const champM = E.champion(r.comps.m).id, champF = E.champion(r.comps.f).id;
+  V.startNewEvent(r, { name: 'Segundo', format: 'misto' });
+  eq(r.history.length, 1);
+  eq(Object.keys(r.history[0].comps), ['m', 'f']);
+  eq(E.champion(r.history[0].comps.m).id, champM); eq(E.champion(r.history[0].comps.f).id, champF);
+  eq(V.categories(r), ['misto']); eq(r.comps.misto.players.length, 0);
+  eq(r.event.name, 'Segundo');
+  // evento vazio não vira histórico
+  V.startNewEvent(r, { format: 'f' });
+  eq(r.history.length, 1);
+});
+
+await test('Formato muda antes do sorteio e redistribui as inscrições', () => {
+  const r = root('misto');
+  add(r.comps.misto, ['Bruno', 'Caio'], 'm'); add(r.comps.misto, ['Ana'], 'f');
+  V.changeFormat(r, 'mf');
+  eq(r.comps.m.players.map((p) => p.name), ['Bruno', 'Caio']); eq(r.comps.f.players.map((p) => p.name), ['Ana']);
+  V.changeFormat(r, 'misto');
+  eq(r.comps.misto.players.length, 3);
+  throws(() => V.changeFormat(r, 'm'), /não pertence/);
+  E.addPlayer(r.comps.misto, { name: 'Sem categoria' });
+  throws(() => V.changeFormat(r, 'mf'), /Informe a categoria/);
+  E.removePlayer(r.comps.misto, r.comps.misto.players.at(-1).id);
+  draw(r.comps.misto);
+  throws(() => V.changeFormat(r, 'mf'), /antes do sorteio/);
+});
+
+await test('Importação aceita (M) e (F) no fim da linha', () => {
+  const r = root('misto');
+  const res = E.importPlayers(r.comps.misto, 'Ana Lima; Aninha (F)\nBruno (m)\nCarla');
+  eq(res.added.map((p) => [p.name, p.nick, p.gender || null]), [['Ana Lima', 'Aninha', 'f'], ['Bruno', '', 'm'], ['Carla', '', null]]);
+  const rm = root('m');
+  const r2 = E.importPlayers(rm.comps.m, 'Bruno\nAna (F)');
+  eq(r2.added.length, 1); eq(r2.skipped.length, 1);
+});
+
+await test('Documento do formato antigo começa do zero e mantém o futebol', () => {
+  const old = { ...E.newTournament(), football: { players: [{ id: 'x', name: 'Zé' }] } };
+  E.addPlayer(old, { name: 'Antigo' });
+  const r = V.normalizeRoot(old);
+  eq(r.schema, 2); eq(V.categories(r), ['misto']); eq(r.comps.misto.players.length, 0);
+  eq(r.football.players[0].name, 'Zé');
+});
+
+await test('Visão da categoria: alterações voltam para a categoria certa', () => {
+  const r = root('mf');
+  const v = V.viewOf(r, 'f');
+  E.addPlayer(v, { name: 'Bia' });
+  v.meta = { ...v.meta, edition: '2ª' };
+  E.setDisplay(v, 'bracket');
+  V.applyView(r, v);
+  eq(r.comps.f.players.length, 1); eq(r.comps.m.players.length, 0);
+  eq(r.comps.f.meta.edition, '2ª'); eq(r.comps.m.meta.edition, '');
+  eq(r.active, 'f', 'telão segue a categoria');
+  ok(!('event' in r.comps.f) && !('football' in r.comps.f) && !('root' in r.comps.f), 'campos do evento não entram na categoria');
+});
+
+await test('7. Persistência: Store grava e recarrega evento, categorias e inscrições', async () => {
+  const db = {
+    rev: 0, doc: null,
+    async load() { return { rev: this.rev, doc: this.doc && structuredClone(this.doc) }; },
+    async currentRev() { return this.rev; }, listen() {},
+    async login() { return 'tok'; }, async session() { return true; }, async logout() {},
+    async save(t, rev, doc) { this.doc = JSON.parse(JSON.stringify(doc)); return { httpStatus: 200, rev: ++this.rev }; },
+  };
+  await store.init({ cloud: db, pollMs: 1e7 });
+  await store.login('x');
+  store.updateRoot((r) => { V.changeFormat(r, 'mf'); V.renameEvent(r, 'TUTORY SPORTS — Ping Pong'); });
+  store.update((t) => add(t, M), 'm');
+  store.update((t) => add(t, F), 'f');
+  store.setCat('f');
+  store.update((t) => draw(t));
+  eq(store.view().cat, 'f');
+  await new Promise((res) => setTimeout(res, 50));
+  eq(db.doc.event.format, 'mf'); eq(db.doc.event.name, 'TUTORY SPORTS — Ping Pong');
+  eq(db.doc.comps.m.players.length, 5); eq(db.doc.comps.f.players.length, 7);
+  eq(db.doc.comps.f.draw.status, 'done'); eq(db.doc.comps.m.draw.status, 'idle');
+  ok(!('football' in db.doc.comps.f), 'sem campos do evento dentro da categoria');
+  await store.pull();
+  eq(V.categories(store.doc), ['m', 'f']);
+  eq(store.view('m').players.length, 5); eq(store.view('f').bracket.size, 8);
+  eq(store.view('m').meta.name, 'TUTORY SPORTS — Ping Pong');
+});
+
+document.getElementById('sum').textContent = `${pass} passaram · ${failed} falharam`;
+document.title = `${pass} ok / ${failed} falhas`;
+window.__failures = failures;
+</script></body></html>

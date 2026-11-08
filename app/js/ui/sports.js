@@ -394,30 +394,34 @@ export function ApprovalsPage() {
 
 // Liga os jogadores do campeonato às contas e leva jogos, colocações e participação ao ranking da modalidade.
 function ChampionshipLink({ t, accounts, mods, run }) {
-  const [modality, setModality] = useState(t.meta.modality || 'pingpong');
-  const [category, setCategory] = useState(t.meta.category || '');
-  // o prefixo "pp-" é o mesmo das versões anteriores: reenviar o ping pong não duplica o que já foi enviado
-  const key = (modality === 'pingpong' ? 'pp-' : modality + '-') + (t.bracket?.createdAt || 'sem-chave');
-  const plan = championshipImport(t, { modality, key, gameWins: E.gameWins, champion: E.champion(t), vice: E.viceChampion(t), category: category || null });
+  const [modality, setModality] = useState(t.event.modality || 'pingpong');
+  // a categoria vem do próprio campeonato (masculino, feminino ou misto): não há como enviar na categoria errada
+  const category = t.cat;
+  const cats = Object.keys(t.comps);
+  const key = (modality === 'pingpong' ? 'pp-' : modality + '-') + category + '-' + (t.bracket?.createdAt || 'sem-chave');
+  const plan = championshipImport(t, { modality, key, gameWins: E.gameWins, champion: E.champion(t), vice: E.viceChampion(t), category });
+  const fits = (a) => category === 'misto' || a.gender === category;
   const linked = t.players.filter((p) => p.userId).length;
   const places = plan.awards.filter((a) => a.place !== 'participacao').length;
   const link = (pid, uid) => {
     try { store.update((d) => { const p = d.players.find((x) => x.id === pid); if (p) p.userId = uid || null; }); } catch (x) { handleError(x); }
   };
-  const guess = (p) => accounts.find((a) => a.name.trim().toLowerCase() === p.name.trim().toLowerCase());
+  const guess = (p) => accounts.find((a) => fits(a) && a.name.trim().toLowerCase() === p.name.trim().toLowerCase());
   return html`<section class="glass card">
     <h3>Campeonato no ranking</h3>
     <p class="muted">Ligue cada jogador do campeonato à conta dele e envie. Entram os jogos encerrados, campeão, vice e a participação de quem jogou. Cada item entra uma vez só, mesmo que você envie de novo.</p>
     <div class="champ-opts">
       <label class="field">Modalidade<select class="input" value=${modality} onChange=${(e) => setModality(e.target.value)}>${mods.map((m) => html`<option value=${m.id}>${m.name}</option>`)}</select></label>
-      <div class="field">Categoria<${Seg} label="Categoria do campeonato" items=${[['', 'Não informar'], ['m', 'Masculino'], ['f', 'Feminino'], ['misto', 'Misto']]} value=${category} onChange=${setCategory} /></div>
+      <div class="field">Categoria${cats.length > 1
+        ? html`<${Seg} label="Categoria do campeonato" items=${cats.map((c) => [c, CATEGORY_LABEL[c]])} value=${category} onChange=${(c) => store.setCat(c)} />`
+        : html`<span class=${'cat-tag ' + category}>${CATEGORY_LABEL[category].toUpperCase()}</span>`}</div>
     </div>
     <p><span class="chip plain">${linked} de ${t.players.length} ligados</span> <span class="chip plain">${plan.items.length} jogos prontos</span>${places ? html` <span class="chip champion">${places} colocação(ões)</span>` : ''}</p>
     ${!accounts.length && html`<p class="notice">Nenhuma conta aprovada ainda.</p>`}
     ${accounts.length > 0 && html`<div class="link-grid">${t.players.map((p) => html`<label key=${p.id} class="link-row"><span>${p.name}</span>
       <select class="input" value=${p.userId || ''} onChange=${(e) => link(p.id, e.target.value)}>
         <option value="">${guess(p) && !p.userId ? `Sugestão: ${guess(p).name}` : 'Sem conta'}</option>
-        ${accounts.map((a) => html`<option value=${a.id}>${a.name}${a.nick ? ` (${a.nick})` : ''}</option>`)}
+        ${accounts.filter((a) => fits(a) || a.id === p.userId).map((a) => html`<option value=${a.id}>${a.name}${a.nick ? ` (${a.nick})` : ''}</option>`)}
       </select></label>`)}</div>
       <div class="actions">
         <button class="btn" onClick=${() => t.players.forEach((p) => { const g = !p.userId && guess(p); if (g) link(p.id, g.id); })}>Ligar por nome igual</button>

@@ -1,17 +1,22 @@
-import { html, useState, useMemo, store, useDoc, act, Ava, openDialog, confirmDialog, toast, go, avatarOf, playerById, displayName, handleError } from './lib.js';
+import { html, useState, useMemo, store, useDoc, act, Ava, openDialog, confirmDialog, toast, go, avatarOf, playerById, displayName, handleError, GenderTag } from './lib.js';
+import { CAT_LABEL, GENDERS } from '../core/event.js';
 import * as E from '../core/engine.js';
 import { avatarFromName } from '../three/avatars.js';
+// avatar provisório no gênero da categoria da pessoa
+const AVATAR_GENDER = { m: 'male', f: 'female' };
 
 function PlayerForm({ player, close, t }) {
-  const [form, set] = useState({ name: player?.name || '', nick: player?.nick || '', number: player?.number || E.nextPlayerNumber(t) });
+  const misto = t.cat === 'misto';
+  const [form, set] = useState({ name: player?.name || '', nick: player?.nick || '', number: player?.number || E.nextPlayerNumber(t), gender: player?.gender || (misto ? '' : t.cat) });
   const [error, setError] = useState('');
   const save = (customize) => {
+    if (misto && !form.gender) { setError('Informe a categoria da pessoa: masculino ou feminino.'); return; }
     try {
       let saved;
       store.update((d) => {
         saved = player
-          ? E.updatePlayer(d, player.id, { ...form, number: Number(form.number) })
-          : E.addPlayer(d, { ...form, number: Number(form.number) }, avatarFromName(form.name));
+          ? E.updatePlayer(d, player.id, { ...form, number: Number(form.number), ...((!player.avatar || player.avatar.provisional) && form.gender !== player.gender && { avatar: avatarFromName(form.name, AVATAR_GENDER[form.gender]) }) })
+          : E.addPlayer(d, { ...form, number: Number(form.number) }, avatarFromName(form.name, AVATAR_GENDER[form.gender]));
       });
       close(customize ? saved.id : true);
     } catch (e) {
@@ -26,6 +31,9 @@ function PlayerForm({ player, close, t }) {
         <input class="input" autofocus required value=${form.name} onInput=${(e) => set({ ...form, name: e.target.value })} /></label>
       <label class="field">Apelido <input class="input" value=${form.nick} onInput=${(e) => set({ ...form, nick: e.target.value })} /></label>
       <label class="field">Número <input class="input" type="number" min="1" value=${form.number} onInput=${(e) => set({ ...form, number: e.target.value })} /></label>
+      ${misto ? html`<fieldset class="field gender-pick" style="grid-column:1/-1"><legend>Categoria</legend>
+        ${Object.entries(GENDERS).map(([g, label]) => html`<label key=${g} class=${'chip-radio' + (form.gender === g ? ' on' : '')}><input type="radio" name="gender" value=${g} checked=${form.gender === g} onChange=${() => set({ ...form, gender: g })} />${label}</label>`)}
+      </fieldset>` : html`<p class="muted hint" style="grid-column:1/-1">Categoria: <b>${CAT_LABEL[t.cat]}</b></p>`}
     </div>
     ${error && html`<p class="form-error" role="alert">${error}</p>`}
     <div class="foot">
@@ -41,7 +49,7 @@ function ImportForm({ close }) {
   const count = text.split(/\r?\n/).filter((l) => l.trim()).length;
   return html`<div class="modal glass">
     <h2>Importar lista de nomes</h2>
-    <p class="body">Um participante por linha. Para informar apelido, use <b>Nome; Apelido</b>. Nomes repetidos são ignorados e listados no final.</p>
+    <p class="body">Um participante por linha. Para informar apelido, use <b>Nome; Apelido</b>. No misto, indique a categoria no fim da linha: <b>(M)</b> ou <b>(F)</b>. Nomes repetidos são ignorados e listados no final.</p>
     <label class="field" style="margin-top:14px"><span class="sr">Lista de nomes</span>
       <textarea class="input" rows="10" autofocus placeholder=${'Ana Lima; Aninha\nBruno Souza\nCarla Dias'} value=${text} onInput=${(e) => setText(e.target.value)}></textarea></label>
     <div class="foot">
@@ -109,7 +117,7 @@ export function PlayersPage() {
   const importList = async () => {
     const text = await openDialog((close) => html`<${ImportForm} close=${close} />`);
     if (!text) return;
-    const r = act((d) => E.importPlayers(d, text, (name) => avatarFromName(name)));
+    const r = act((d) => E.importPlayers(d, text, (name, g) => avatarFromName(name, AVATAR_GENDER[g])));
     if (!r) return;
     toast(`${r.added.length} inscritos.${r.skipped.length ? ` ${r.skipped.length} ignorados: ${r.skipped.map((s) => s.line).join(', ')}.` : ''}`, r.skipped.length ? '' : 'ok');
   };
@@ -146,7 +154,7 @@ export function PlayersPage() {
           <button class="player-open" onClick=${() => openDialog((close) => html`<${HistoryDialog} t=${t} player=${p} close=${close} />`)} aria-label=${'Histórico de ' + p.name}>
             <span class="player-num">${String(p.number).padStart(2, '0')}</span>
             <${Ava} player=${p} size=${112} state=${r.status.key === 'champion' ? 'champ' : ''} />
-            <h3>${p.name}</h3>
+            <h3>${p.name} ${t.cat === 'misto' && html`<${GenderTag} gender=${p.gender} />`}</h3>
             <p class="muted nick">${p.nick ? `"${p.nick}"` : ' '}</p>
             <div class="player-meta">
               <span class=${'chip ' + r.status.key}>${r.status.label}</span>

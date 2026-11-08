@@ -221,3 +221,33 @@ Tudo em `supabase/sports.sql`, que pode ser rodado de novo sem perder dados. **R
   - A correção: as peças agora nascem do corpo com as formas aplicadas, nos dois gêneros. A altura da logo no tronco feminino segue a proporção do corpo.
   - Os testes de combinações passaram, 16 por gênero, sem falhas automáticas.
   - Limite que continua: o decote em V do kimono feminino é fundo e tem a borda irregular.
+
+## Fase 5: campeonatos masculinos, femininos e mistos (08/11/2026)
+- **1ª edição zerada a pedido do Paulo:** só o campeonato de ping pong foi apagado. Futebol, ranking e contas ficaram como estavam.
+  - O ranking não tinha nada da 1ª edição, porque ela nunca tinha sido enviada.
+  - Antes, o documento completo (revisão 298) foi salvo em `backups/`. Essa pasta fica fora do git, porque tem nomes de pessoas.
+- **Modelo** (`app/js/core/event.js`):
+  - O documento salvo virou um **evento** com uma ou duas **categorias**.
+  - Cada categoria é um campeonato completo do motor: inscrições, sorteio, chave, partidas, regulamento, pontuação e telão próprios.
+  - Formatos:
+    - masculino;
+    - feminino;
+    - misto, com sorteio integrado;
+    - masculino e feminino no mesmo evento, com dois sorteios e duas chaves.
+  - Eventos encerrados vão intactos para o histórico.
+- **Regras:**
+  - No masculino só entra quem é do masculino, e no feminino só quem é do feminino. O motor recusa o contrário.
+  - No misto a categoria é obrigatória no cadastro. Na importação, vai no fim da linha: `(M)` ou `(F)`.
+  - O formato pode mudar até o sorteio. As inscrições são redistribuídas pela categoria de cada pessoa. Depois do sorteio, fica travado.
+  - O avatar provisório nasce no gênero da categoria.
+- **Telas:**
+  - Uma faixa com o nome do evento e a categoria (MASCULINO / FEMININO / MISTO) aparece nas telas do campeonato. Com duas categorias, ela alterna entre elas, e a escolha vale só naquele aparelho.
+  - Painel do ADM: cartão **Evento**, com nome, modalidade, formato e "Novo evento".
+  - Nova página **Campeonatos**: evento atual e anteriores, com o pódio, os participantes e os resultados de cada categoria.
+  - O telão segue a categoria em que o ADM mexeu por último. Também dá para fixar com `#/telao?cat=f`.
+  - O envio ao ranking usa a categoria do próprio campeonato, e só sugere contas do mesmo gênero.
+- **Banco:** `supabase/categorias.sql` atualiza o `pp_save_avatar`, que salva o avatar pelo código pessoal, para achar a pessoa dentro das categorias. Precisa rodar uma vez.
+- **Testes** (`tests/event.test.html`, 11): os 7 critérios de aceitação da seção 6, mais formato, importação, documento antigo e persistência pelo Store.
+- **Testes de regressão:** motor 52, futebol 40, Store 13 e esportes 27, todos aprovados.
+- **App completo sobre banco simulado:** `mock.html`. Por ele foram feitos, na tela, cadastro, troca de formato, sorteio do feminino, novo evento, histórico, telão e celular de 375 px.
+- **Fica para a fase 6:** disputa de 3º lugar (o pódio mostra campeão e vice), repescagem e partidas ao vivo.
