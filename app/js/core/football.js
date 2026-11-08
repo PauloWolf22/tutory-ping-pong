@@ -238,7 +238,7 @@ function archiveDay(f, reason) {
   f.archive.unshift({
     at: s.startedAt, closedAt: Date.now(), reason,
     players: f.players.map((p) => ({ id: p.id, name: p.name, quit: !!p.quit })),
-    games: s.rounds, subs: s.subs, finance: financeSummary(f),
+    games: s.rounds, subs: s.subs, ...(f.finance && financeSummary(f).total > 0 && { finance: financeSummary(f) }),
   });
   if (f.archive.length > MAX_ARCHIVE) f.archive.length = MAX_ARCHIVE;
 }
@@ -354,4 +354,21 @@ export function financeSummary(f) {
   });
   const received = rows.filter((r) => r.paid).reduce((a, r) => a + r.due, 0);
   return { total, perPerson: n ? total / n : 0, count: n, rows, received, pending: total - received, paidCount: rows.filter((r) => r.paid).length, pendingCount: rows.filter((r) => !r.paid).length };
+}
+
+// ------------------------------------------------------------------ financeiro protegido (Supabase)
+// No site online o financeiro não fica no documento público: vive numa tabela que só o administrador lê.
+// O registro guarda o dia atual e o resumo das terças anteriores.
+export const newFinanceRecord = () => ({ current: newFinance(), archive: [] });
+export const normalizeFinanceRecord = (d) => ({ current: { ...newFinance(), ...(d?.current || {}) }, archive: d?.archive || [] });
+export const hasFinance = (fin) => !!fin && (fin.pricePerHour > 0 || fin.hours > 0 || Object.keys(fin.payers || {}).length > 0);
+
+// Fecha o dia do financeiro (nova terça): guarda o resumo e zera os pagamentos, mantendo o valor da quadra.
+export function closeFinanceDay(f, rec) {
+  if (hasFinance(rec.current)) {
+    rec.archive.unshift({ at: f.session?.startedAt || Date.now(), closedAt: Date.now(), summary: financeSummary({ ...f, finance: rec.current }), log: rec.current.log });
+    if (rec.archive.length > MAX_ARCHIVE) rec.archive.length = MAX_ARCHIVE;
+  }
+  rec.current = { ...newFinance(), pricePerHour: rec.current.pricePerHour, hours: rec.current.hours };
+  return rec;
 }

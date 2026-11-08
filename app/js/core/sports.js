@@ -38,7 +38,7 @@ export async function createSportsDb({ url, anonKey }) {
       if (/does not exist|could not find|schema cache/i.test(res.error.message)) throw new UserError(NOT_READY);
       throw new UserError('O banco recusou a operação.');
     }
-    if (res.data?.error) throw Object.assign(new UserError(res.data.error), { status: res.data.unauthorized ? 401 : 400 });
+    if (res.data?.error) throw Object.assign(new UserError(res.data.error), { status: res.data.unauthorized ? 401 : res.data.conflict ? 409 : 400 });
     return res.data;
   };
   const rpc = (name, args) => guard(() => client.rpc(name, args));
@@ -81,6 +81,8 @@ export async function createSportsDb({ url, anonKey }) {
     adminDecide: (token, id, approve) => rpc('sp_admin_decide', { p_token: token, p_id: id, p_approve: approve }),
     adminDelete: (token, id) => rpc('sp_admin_delete_result', { p_token: token, p_id: id }),
     adminImport: (token, items, awards) => rpc('sp_admin_import', { p_token: token, p_items: items, p_awards: awards }),
+    finGet: (token) => rpc('sp_fin_get', { p_token: token }),
+    finSave: (token, rev, data) => rpc('sp_fin_save', { p_token: token, p_rev: rev, p_data: data }),
     requestReset: (email) => rpc('sp_request_reset', { p_email: email }),
     adminResetPassword: (token, id) => rpc('sp_admin_reset_password', { p_token: token, p_id: id }),
     listen(fn) {

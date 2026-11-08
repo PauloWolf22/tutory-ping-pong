@@ -61,3 +61,12 @@ Camada nova, em `supabase/sports.sql`. Não mexe no campeonato que já está no 
 **Limites conhecidos:**
 - "Esqueci a senha" não funciona sem um servidor de e-mail próprio (SMTP) configurado no Supabase. Até lá, a pessoa cria outra conta e o administrador bloqueia a antiga.
 - O administrador continua sendo a senha do campeonato; as contas de participante não têm poderes de administrador.
+
+## Financeiro do futebol (tabela protegida)
+
+Script `supabase/football-finance.sql`. Rode depois do `schema.sql` e do `sports.sql`.
+
+1. Supabase > SQL Editor > New query > cole `supabase/football-finance.sql` inteiro > Run. Deve aparecer "Pronto: financeiro do futebol protegido." Pode rodar de novo sem perder dados.
+2. O que muda: no site online, preço da quadra, rateio, pagamentos e histórico ficam em `private.football_finance`. O site não alcança essa tabela pela API. As funções `sp_fin_get` e `sp_fin_save` só respondem com a sessão do administrador.
+3. Antes de rodar o script, o painel de financeiro do site mostra um erro com o botão "Tentar de novo"; o resto do futebol funciona normalmente.
+4. No servidor da rede interna (`start.bat`) o financeiro continua no documento do campeonato, que fica só na máquina.

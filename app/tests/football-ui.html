@@ -7,6 +7,8 @@
 // Abre a tela real como administrador sobre um banco simulado: nada vai para o Supabase nem para data/.
 import { html, render, Overlays, store, useDoc } from '../js/ui/lib.js';
 import { FootballPage } from '../js/ui/football.js';
+import { sports } from '../js/core/sports.js';
+import { createMockSportsDb } from './sports-mock.js';
 const db = {
   rev: 0, doc: null,
   async load() { return { rev: this.rev, doc: this.doc && structuredClone(this.doc) }; },
@@ -17,6 +19,10 @@ const db = {
 const q = new URLSearchParams(location.search);
 await store.init({ cloud: db, pollMs: 100000 });
 if (q.get('visitor') !== '1') await store.login('x');
+// financeiro protegido sobre o banco simulado das contas (mesmas regras do supabase/football-finance.sql)
+const sdb = createMockSportsDb();
+await sports.init(sdb);
+window.__sdb = sdb;
 const App = () => { useDoc(); return html`<${FootballPage} /><${Overlays} />`; };
 render(html`<${App} />`, document.getElementById('app'));
 window.__db = db; window.__store = store;

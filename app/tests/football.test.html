@@ -366,6 +366,24 @@ test('Documento antigo (histórico invertido) vira rodadas na ordem certa', () =
   eq(F.financeSummary(f).total, 0);
 });
 
+test('Financeiro protegido: registro separado do documento, fechamento do dia guarda resumo', () => {
+  const f = make(14);
+  const rec = F.normalizeFinanceRecord({});
+  const view = { ...f, finance: rec.current };
+  F.setFinance(view, { pricePerHour: 200, hours: 1 });
+  F.setPaid(view, f.players[2].id, true);
+  eq(f.finance.pricePerHour, 0, 'documento público não recebe nada');
+  ok(F.hasFinance(rec.current)); ok(!F.hasFinance(f.finance));
+  F.startSession(f, seeded(31)); F.registerWinner(f, 'A');
+  F.closeFinanceDay(f, rec);
+  eq(rec.archive.length, 1); eq(rec.archive[0].summary.total, 20000); eq(rec.archive[0].summary.paidCount, 1);
+  eq(rec.current.payers, {}); eq(rec.current.pricePerHour, 200);
+  F.newTuesday(f);
+  ok(!('finance' in f.archive[0]), 'arquivo do documento sem dados de pagamento');
+  const back = F.normalizeFinanceRecord(JSON.parse(JSON.stringify(rec)));
+  eq(back, rec);
+});
+
 document.getElementById('sum').textContent = `${pass} passaram · ${failed} falharam`;
 document.getElementById('sum').className = failed ? 'ko' : 'ok';
 window.__results = { pass, failed, failures };

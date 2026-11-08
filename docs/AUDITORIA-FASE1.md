@@ -77,5 +77,7 @@ TUTORY SPORTS nos títulos, cabeçalho, tela inicial e telão. O campeonato salv
 - Regressão: motor 52, nuvem 13, Tutory Sports 18. Total de 122, todos passando.
 - Tela com banco simulado no desktop e em 375 px, sem rolagem lateral. Testados o menu, a confirmação, a reposição e a gravação.
 
-## Atenção
-- O futebol fica no mesmo documento do campeonato, que qualquer pessoa com o link consegue ler pela API. A tela esconde o financeiro de quem não é administrador, mas os nomes e o status de pagamento estão nesse documento. Se isso for um problema, dá para levar o financeiro para uma tabela protegida no Supabase; isso exige rodar um script SQL novo.
+## Financeiro protegido (08/11/2026)
+O Paulo escolheu tabela protegida. No site online o financeiro não fica mais no documento público: vive em `private.football_finance`, lido e gravado só com a sessão do administrador (`supabase/football-finance.sql`, ainda **não rodado** no banco real). Gravação com número de revisão: se outro aparelho alterou antes, o app recarrega e avisa. "Nova terça" fecha o financeiro (resumo guardado nas terças anteriores) antes de limpar a lista. O arquivo público das terças não leva dados de pagamento. Financeiro que tenha ficado no documento é movido para a tabela e apagado do documento na primeira abertura.
+
+Testes: futebol 40 e regressão 83, todos passando. Na tela, com banco simulado, foram testados: salvar valores, marcar pago, conflito entre aparelhos, nova terça e documento sem dados de pagamento.
