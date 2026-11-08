@@ -49,14 +49,16 @@ function HeroVideo() {
   const [paused, setPaused] = useState(false);
   const saveData = typeof navigator !== "undefined" && navigator.connection?.saveData;
   const poster = "assets/video/home-poster.jpg";
-  if (saveData) return html`<img class="hero-video" src=${poster} alt="" />`;
+  if (saveData) return html`<div class="hero-media"><img class="hero-video" src=${poster} alt="" /></div>`;
   const toggle = () => { const v = ref.current; if (!v) return; if (v.paused) { v.play(); setPaused(false); } else { v.pause(); setPaused(true); } };
   // toca sempre, mudo e em loop; o botão de pausa atende quem prefere menos movimento
-  return html`<video ref=${ref} class="hero-video" autoplay muted loop playsinline preload="metadata" poster=${poster} aria-hidden="true">
+  return html`<div class="hero-media">
+  <video ref=${ref} class="hero-video" autoplay muted loop playsinline preload="metadata" poster=${poster} aria-hidden="true">
     <source src="assets/video/home-720.mp4" type="video/mp4" media="(max-width: 900px)" />
     <source src="assets/video/home.mp4" type="video/mp4" />
   </video>
-  <button class="hero-pause" onClick=${toggle} aria-label=${paused ? "Tocar o vídeo" : "Pausar o vídeo"}>${paused ? "▶" : "❚❚"}</button>`;
+  <button class="hero-pause" onClick=${toggle} aria-label=${paused ? "Tocar o vídeo" : "Pausar o vídeo"}>${paused ? "▶" : "❚❚"}</button>
+  </div>`;
 }
 
 export function HomePage() {
