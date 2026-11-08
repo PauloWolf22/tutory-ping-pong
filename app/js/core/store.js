@@ -5,7 +5,7 @@
 import { newTournament, UserError } from './engine.js';
 import { SUPABASE } from '../config.js';
 import { createCloud } from './cloud.js';
-import { newFootball } from './football.js';
+import { newFootball, normalizeFootball } from './football.js';
 
 const LOCAL_DOC = 'tutory-pp-doc';
 const LOCAL_AUTH = 'tutory-pp-auth';
@@ -23,7 +23,7 @@ function withDefaults(doc) {
     settings: { ...base.settings, ...doc.settings },
     draw: { ...base.draw, ...doc.draw },
     display: { ...base.display, ...doc.display },
-    football: { ...base.football, ...doc.football },
+    football: normalizeFootball({ ...base.football, ...doc.football }),
   };
 }
 

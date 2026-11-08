@@ -48,3 +48,34 @@ TUTORY SPORTS nos títulos, cabeçalho, tela inicial e telão. O campeonato salv
 - Banco real: depende de rodar `supabase/sports.sql` e desligar "Confirm email".
 - iPhone e Android de verdade (tela cheia, salvamento com JPEG).
 - Tela cheia real: o navegador de testes não permite entrar em tela cheia por script.
+
+---
+
+# Prompt de evolução e finalização: Fase 2, Futebol (07/11/2026)
+
+## O que mudou
+- **FIFO rigoroso.** Os 10 primeiros presentes continuam sorteados entre Time A e Time B. A fila agora segue a ordem de chegada; antes ela era embaralhada.
+- **"Essa pessoa não quer mais jogar".** Tocar no nome (em campo, na fila ou na lista) abre um menu com essa ação, com confirmação.
+  - O nome fica riscado, com a marca "Desistiu", e sai das filas e das próximas escalações.
+  - Se a pessoa estava em campo, o primeiro da fila entra na mesma vaga; o resto da fila não muda de ordem. Sem ninguém na fila, o time fica incompleto e mostra a contagem real.
+  - O placar e as rodadas anteriores não mudam. A troca fica registrada na rodada em andamento.
+  - "Voltar a jogar" desfaz a desistência: a pessoa entra no fim da fila.
+  - "Remover" só existe para nome digitado errado. Quem já jogou não pode ser removido, só marcado como desistente.
+- **Rodadas como fotografias.**
+  - Cada jogo registra os dois times completos, o vencedor, a hora e as substituições.
+  - A lista vai da Rodada 01 para baixo; a rodada em campo fica destacada no fim. Verde para quem venceu e ficou, vermelho para quem perdeu e foi para a fila.
+  - Refazer o sorteio mantém as rodadas. Reiniciar a sessão e "Nova terça" levam o dia para "Terças anteriores", em vez de apagar.
+- **Estatísticas do dia.** Por pessoa: jogos, vitórias, derrotas, em que time jogou cada rodada, situação (em campo, na fila, ainda não jogou, ausente, desistiu) e substituições. Tudo calculado das rodadas registradas. Sem ranking individual, como pedido.
+- **Financeiro** (só o administrador vê):
+  - Preço por hora × duração, dividido por quem está no rateio. Por padrão entra quem está presente ou já jogou; dá para tirar e incluir pessoas.
+  - Valores em centavos, com a soma das cotas igual ao total. Exemplo: R$ 360 por 23 pessoas dá cotas de R$ 15,65 e R$ 15,66.
+  - "Marcar pago" mostra PAGO em verde. O resumo traz total, recebido, pendente, pagos e pendentes.
+  - Toda alteração entra no histórico. Ao começar uma nova terça, os pagamentos vão para o arquivo do dia.
+
+## Testado
+- 39 testes do futebol (27 antigos e 12 novos), cobrindo FIFO, desistência em campo e na fila, reposição, rodadas imutáveis, estatísticas, financeiro, serialização e documento antigo.
+- Regressão: motor 52, nuvem 13, Tutory Sports 18. Total de 122, todos passando.
+- Tela com banco simulado no desktop e em 375 px, sem rolagem lateral. Testados o menu, a confirmação, a reposição e a gravação.
+
+## Atenção
+- O futebol fica no mesmo documento do campeonato, que qualquer pessoa com o link consegue ler pela API. A tela esconde o financeiro de quem não é administrador, mas os nomes e o status de pagamento estão nesse documento. Se isso for um problema, dá para levar o financeiro para uma tabela protegida no Supabase; isso exige rodar um script SQL novo.

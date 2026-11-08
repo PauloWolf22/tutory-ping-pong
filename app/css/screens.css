@@ -525,6 +525,63 @@ a.bk-card:hover { border-color: var(--beam); }
 .fb-archive { margin-top: 14px; }
 .fb-archive summary { cursor: pointer; font-weight: 650; }
 .fb-archive ul { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 5px; font-size: 13.5px; color: var(--muted); }
+.fb-archive li summary { font-weight: 500; }
+.fb-arch-rounds { margin: 6px 0 4px; padding-left: 18px; display: grid; gap: 3px; }
+/* desistência e menu do participante */
+.fb-arrivals li.quit .fb-arr-name { color: var(--faint); text-decoration: line-through; }
+.fb-arrivals .linklike.fb-arr-name { text-align: left; min-height: 36px; color: inherit; text-decoration: none; }
+.fb-arrivals li.quit .linklike.fb-arr-name { text-decoration: line-through; color: var(--faint); }
+.chip.fb-quit { color: #ffc2c2; border-color: rgba(255, 107, 107, 0.45); background: rgba(255, 107, 107, 0.1); }
+.fb-tip { margin: 0 0 6px; }
+.fb-menu .fb-menu-list { display: grid; gap: 8px; margin-top: 14px; }
+.fb-menu .fb-menu-list .btn { min-height: 48px; justify-content: center; }
+/* rodadas: verde fica, vermelho volta para a fila, atual em destaque */
+.fb-round { gap: 6px !important; }
+.fb-round header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.fb-round header small { color: var(--muted); }
+.fb-rt { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line); font-size: 13.5px; }
+.fb-rt > span:last-child { grid-column: 1 / -1; color: var(--muted); }
+.fb-rt .chip { justify-self: start; }
+.fb-rt.won { border-color: rgba(47, 206, 127, 0.55); background: rgba(47, 206, 127, 0.1); }
+.fb-rt.lost { border-color: rgba(255, 107, 107, 0.45); background: rgba(255, 107, 107, 0.08); }
+.chip.fb-lost-chip { color: #ffc2c2; border-color: rgba(255, 107, 107, 0.5); background: rgba(255, 107, 107, 0.12); }
+.fb-round.current { border: 1px solid rgba(59, 123, 245, 0.6); background: rgba(59, 123, 245, 0.1) !important; }
+.fb-sub { color: #f5d38a !important; }
+/* estatísticas */
+.fb-stats, .fb-finance { margin-top: 14px; }
+.fb-stats > summary, .fb-finance > summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.fb-table-wrap { overflow-x: auto; margin-top: 10px; }
+.fb-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.fb-table th, .fb-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.fb-table th { color: var(--muted); font-weight: 600; font-size: 12px; }
+.fb-table tr.quit td:first-child { text-decoration: line-through; color: var(--faint); }
+.fb-teams { display: flex; flex-wrap: wrap; gap: 3px; }
+.fb-teams span { font: 700 11px var(--font-title); padding: 2px 5px; border-radius: 6px; }
+.fb-teams .w { background: rgba(47, 206, 127, 0.18); color: #bff3d7; }
+.fb-teams .l { background: rgba(255, 107, 107, 0.14); color: #ffc2c2; }
+/* financeiro */
+.fb-fin-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-top: 12px; }
+.fb-fin-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.fb-fin-tiles > div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--glass-hi); border: 1px solid var(--line); }
+.fb-fin-tiles b { font: 800 19px var(--font-title); }
+.fb-fin-tiles small { color: var(--muted); font-size: 12px; }
+.fb-fin-tiles .ok { border-color: rgba(47, 206, 127, 0.5); }
+.fb-fin-tiles .warn { border-color: rgba(245, 190, 80, 0.45); }
+.fb-pay { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 4px; }
+.fb-pay li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto auto; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; border: 1px solid transparent; }
+.fb-pay li.paid { border-color: rgba(47, 206, 127, 0.45); background: rgba(47, 206, 127, 0.08); }
+.fb-pay-name { font-weight: 600; overflow-wrap: anywhere; }
+.fb-fin-log { margin-top: 10px; font-size: 13px; }
+.fb-fin-log summary { cursor: pointer; color: var(--muted); }
+.fb-fin-log ul { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 3px; color: var(--muted); max-height: 220px; overflow-y: auto; }
+@media (max-width: 720px) {
+  .fb-fin-form { grid-template-columns: 1fr 1fr; }
+  .fb-fin-form .btn { grid-column: 1 / -1; }
+  .fb-fin-tiles { grid-template-columns: 1fr 1fr; }
+  .fb-pay li { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .fb-pay-name { grid-column: 1 / 3; }
+  .fb-pay li .chip { justify-self: start; }
+}
 @media (max-width: 720px) {
   .fb-field, .fb-spin { grid-template-columns: 1fr; }
   .fb-vs { justify-self: center; font-size: 20px; }
