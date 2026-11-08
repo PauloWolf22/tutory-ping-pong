@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Avatares: teste de combinações</title>
+<script type="importmap">{ "imports": { "three": "../js/vendor/three/three.module.min.js" } }</script>
+<style>body{margin:0;background:#07101f;color:#d0ddef;font:12px system-ui}#sum{padding:8px 10px;font-size:15px;font-weight:700}#g{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:4px}figure{margin:0;text-align:center}img{width:100%;display:block;border-radius:8px;background:#0d1a33}figcaption{padding:2px 0 6px}.ko{color:#ff8a8a}</style></head>
+<body><div id="sum">rodando…</div><div id="g"></div>
+<script type="module">
+// Monta avatares reais (createAvatar) em combinações extremas de corpo, roupa e pose, e fotografa cada um.
+// ?g=male|female  ?pose=Ready|Victory|SwordSlash|Idle  ?view=front|side|back
+import * as THREE from 'three';
+import { createAvatar, normalizeAvatar, dressed } from '../js/three/avatars.js';
+const q = new URLSearchParams(location.search);
+const G = q.get('g') || 'male', POSE = q.get('pose') || 'Ready', VIEW = q.get('view') || 'front';
+const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+r.setSize(300, 420, false); r.toneMapping = THREE.NeutralToneMapping;
+const scene = new THREE.Scene();
+const key = new THREE.DirectionalLight(0xfff0e2, 2.6); key.position.set(1.4, 2.6, 3.4);
+const rim = new THREE.DirectionalLight(0x9ebcff, 1.8); rim.position.set(-1.6, 2.4, -3);
+scene.add(key, rim, new THREE.HemisphereLight(0xf0f4ff, 0x4a4238, 0.9));
+const cam = new THREE.PerspectiveCamera(26, 300 / 420, 0.05, 50);
+cam.position.set(0, 1.0, 4.6); cam.lookAt(0, 0.92, 0);
+const M = G === 'male';
+const clothes = M
+  ? [{ full: 'male_casualsuit04' }, { top: 'elvs_crude_t-shirt_male', bottom: 'cortu_jeans_shorts' }, { top: 'toigo_fisherman_sweater', bottom: 'toigo_wool_pants' }, { full: 'toigo_male_suit_3' }, { top: 'namuhekam_male_polo_shirt', bottom: 'cortu_cargo_pants' }]
+  : [{ full: 'female_sportsuit01' }, { top: 'toigo_camisole_top', bottom: 'frankyaye_mini_skirt_01' }, { full: 'toigo_halter_dress_knee_length' }, { top: 'joepal_crude_t-shirt_female', bottom: 'cortu_jeans_shorts' }, { full: 'mindfront_kimono' }];
+const bodies = [
+  ['base', {}], ['magro', { body_thin: 1 }], ['pesado', { body_heavy: 1 }], ['musculoso', { body_muscle: 1, body_heavy: 0.3 }],
+  ['atlético', { body_muscle: 0.6, body_thin: 0.3, shoulders_wide: 0.5, waist_narrow: 0.4 }], ['maior', { body_heavy: 1, belly_big: 0.6, waist_wide: 0.6, arms_thick: 0.6 }],
+  ['ombro largo + braço longo', { shoulders_wide: 1, arms_long: 1 }], ['perna longa', { legs_long: 1 }], ['perna curta + tronco longo', { legs_short: 1, torso_long: 1 }],
+  ['pesado + musculoso', { body_heavy: 1, body_muscle: 1 }], ['quadril largo', { hips_wide: 1, legs_thick: 1 }], ['magro + braço fino', { body_thin: 1, arms_thin: 1, legs_thin: 1 }],
+];
+const cases = [];
+bodies.forEach(([l, m], i) => cases.push({ l, m, parts: clothes[i % clothes.length] }));
+cases.push({ l: 'SEM ROUPA pedida → deve vestir', m: {}, parts: {} });
+cases.push({ l: 'só parte de cima → completa', m: {}, parts: { top: clothes[1].top } });
+cases.push({ l: 'peça inexistente → básica', m: {}, parts: { full: 'nao_existe' } });
+cases.push({ l: 'morph 1.6 salvo → limitado a 1', m: { body_heavy: 1.6 }, parts: clothes[0] });
+const out = document.getElementById('g');
+const fails = [];
+for (const c of cases) {
+  const cfg = { v: 2, gender: G, skin: 'oriental', morph: c.m, parts: { ...c.parts, hair: M ? 'short02' : 'long01', shoes: M ? 'shoes01' : 'shoes03' }, pose: POSE, racket: { style: 'none' } };
+  const a = await createAvatar(cfg);
+  const n = a.config.parts;
+  const ok = !!(a.parts.has('full') || (a.parts.has('top') && a.parts.has('bottom')));
+  if (!ok) fails.push(c.l + ': sem roupa');
+  if (Object.values(a.config.morph).some((v) => v > 1)) fails.push(c.l + ': morph acima de 1');
+  a.group.rotation.y = VIEW === 'side' ? Math.PI / 2 : VIEW === 'back' ? Math.PI : -0.35;
+  a.play(POSE, { fade: 0 });
+  a.update(POSE === 'Idle' ? 0.5 : 0.45);
+  scene.add(a.group);
+  r.render(scene, cam);
+  out.insertAdjacentHTML('beforeend', `<figure><img src="${r.domElement.toDataURL('image/jpeg', 0.85)}"><figcaption class="${ok ? '' : 'ko'}">${c.l}<br>${Object.keys(n).filter((k) => ['full', 'top', 'bottom'].includes(k)).map((k) => n[k]).join(' + ')}</figcaption></figure>`);
+  a.dispose();
+}
+// esqueleto: sem morph, o reajuste das articulações não muda nada (fórmula do bind correta)
+{
+  const a = await createAvatar({ v: 2, gender: G, parts: clothes[0] });
+  const before = a.body.skeleton.boneInverses.map((m) => m.clone());
+  a.applyJoints();
+  const diff = Math.max(...a.body.skeleton.boneInverses.map((m, i) => Math.max(...m.elements.map((e, k) => Math.abs(e - before[i].elements[k])))));
+  if (diff > 1e-5) fails.push('rebind sem morph alterou o esqueleto: ' + diff);
+  window.__rebindDiff = diff;
+  a.dispose();
+}
+window.__results = { cases: cases.length, fails };
+document.getElementById('sum').textContent = `${G} · ${POSE} · ${VIEW} · ${cases.length} combinações · ${fails.length ? 'FALHAS: ' + fails.join('; ') : 'sem falhas automáticas'}`;
+</script></body></html>
