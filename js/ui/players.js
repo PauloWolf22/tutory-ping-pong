@@ -71,7 +71,7 @@ function HistoryDialog({ t, player, close }) {
       ${matches.map((m) => {
         const opp = playerById(t, m.p.find((x) => x !== player.id));
         const res = m.bye ? 'BYE' : m.winner === player.id ? 'Vitória' : m.loser === player.id ? 'Derrota' : E.STATUS_LABEL[m.status];
-        return html`<li key=${m.id}><span class="overline">${t.bracket.rounds[m.round].short}</span>
+        return html`<li key=${m.id}><span class="overline">${E.roundOf(t, m).short}</span>
           <span class="grow">${m.bye ? 'Avançou direto' : opp ? `contra ${displayName(opp)}` : 'Adversário a definir'}</span>
           <span class="muted">${E.scoreText(t, m)}</span><b class=${m.winner === player.id ? 'c-win' : m.loser === player.id ? 'c-lose' : ''}>${res}</b></li>`;
       })}

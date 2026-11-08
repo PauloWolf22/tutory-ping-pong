@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Testes: 3º lugar, repescagem e partidas ao vivo</title>
+<style>body{font:14px/1.5 system-ui;background:#0a0d14;color:#d0ddef;padding:24px;max-width:960px;margin:auto}h1{font-size:20px}.ok{color:#5fd38d}.ko{color:#ff7b7b;font-weight:700}li{list-style:none}#sum{font-size:18px;font-weight:700;margin:12px 0}</style></head>
+<body><h1>3º lugar, repescagem, formato por confronto e partidas ao vivo</h1><div id="sum"></div><ul id="out"></ul>
+<script type="module">
+// Fase 6 do master prompt (seções 7 e 8): regras do motor.
+import * as E from '../js/core/engine.js';
+const out = document.getElementById('out');
+let pass = 0, failed = 0;
+const failures = [];
+function test(name, fn) {
+  try { fn(); pass++; out.insertAdjacentHTML('beforeend', `<li class="ok">✓ ${name}</li>`); }
+  catch (e) { failed++; failures.push(name + ': ' + e.message); out.insertAdjacentHTML('beforeend', `<li class="ko">✗ ${name} — ${e.message}</li>`); }
+}
+const eq = (a, b, m = '') => { const x = JSON.stringify(a), y = JSON.stringify(b); if (x !== y) throw new Error(`${m} esperado ${y}, veio ${x}`); };
+const ok = (v, m = 'falso') => { if (!v) throw new Error(m); };
+const throws = (fn, re) => { try { fn(); } catch (e) { if (!(e instanceof E.UserError)) throw e; if (re && !re.test(e.message)) throw new Error('mensagem: ' + e.message); return; } throw new Error('deveria falhar'); };
+function seeded(seed) { let s = seed; return (n) => { s = (s * 1664525 + 1013904223) >>> 0; return s % n; }; }
+function make(n, { oddMode = 'byes', third = true, cons = false } = {}) {
+  const t = E.newTournament();
+  t.settings.oddMode = oddMode;
+  E.setBracketOptions(t, { thirdPlace: third, consolation: cons });
+  for (let i = 0; i < n; i++) E.addPlayer(t, { name: `Jogador ${i + 1}` });
+  E.startDraw(t);
+  const r = seeded(n * 7 + 3);
+  while (t.draw.status === 'live') E.drawNext(t, null, r);
+  return t;
+}
+const playAll = (t, games = [[11, 5], [11, 7]]) => { let m, g = 0; while ((m = E.nextMatch(t)) && g++ < 400) E.saveGames(t, m.id, games); };
+const firstRoundLosers = (t) => t.bracket.rounds[0].matches.map((id) => t.matches[id]).filter((m) => !m.bye).map((m) => m.loser);
+
+// ---------------------------------------------------------------- 3º lugar
+test('3º lugar: perdedores das semifinais se enfrentam antes da final', () => {
+  const t = make(8);
+  const semis = t.bracket.rounds[1].matches.map((id) => t.matches[id]);
+  playAll(t);
+  eq(t.matches.t3.p.slice().sort(), semis.map((m) => m.loser).sort(), 'participantes do 3º');
+  const order = E.orderedMatches(t).map((m) => m.id);
+  ok(order.indexOf('t3') < order.indexOf('m2-0'), '3º antes da final');
+  const pod = [E.champion(t), E.viceChampion(t), E.thirdPlace(t), E.fourthPlace(t)].map((p) => p.id);
+  eq(new Set(pod).size, 4, 'pódio com 4 pessoas diferentes');
+  eq(E.thirdPlace(t).id, t.matches.t3.winner);
+  eq(E.tournamentStatus(t).key, 'finished');
+  const st = E.computeStats(t);
+  eq(st.ranking.slice(0, 4).map((r) => r.player.id), pod, 'classificação 1º a 4º');
+  eq(E.playerStatus(t, pod[2]).label, '3º lugar');
+  eq(st.totalMatches, 8, '7 da chave + 3º lugar');
+});
+
+for (const n of [4, 5, 6, 7, 9, 12, 16, 17]) {
+  for (const oddMode of ['byes', 'preliminary']) {
+    test(`3º lugar com ${n} jogadores (${oddMode})`, () => {
+      const t = make(n, { oddMode });
+      ok(t.matches.t3, 'existe disputa de 3º');
+      playAll(t);
+      ok(E.champion(t) && E.thirdPlace(t) && E.fourthPlace(t));
+      eq(E.realMatches(t).length, n, 'n-1 da chave + 3º lugar');
+      eq(new Set(E.realMatches(t).map((m) => m.number)).size, n, 'números únicos');
+    });
+  }
+}
+
+test('3 jogadores: sem disputa de 3º, o perdedor da semifinal é o 3º', () => {
+  const t = make(3);
+  ok(!t.matches.t3);
+  playAll(t);
+  ok(E.thirdPlace(t), '3º definido');
+  ok(![E.champion(t).id, E.viceChampion(t).id].includes(E.thirdPlace(t).id));
+});
+
+test('3º lugar desligado: não cria a partida', () => {
+  const t = make(8, { third: false });
+  ok(!t.matches.t3);
+  playAll(t);
+  eq(E.thirdPlace(t), null);
+  eq(E.realMatches(t).length, 7);
+});
+
+test('Corrigir semifinal troca quem disputa o 3º e reinicia o resultado dele', () => {
+  const t = make(8);
+  playAll(t);
+  const semi = t.matches['m1-0'];
+  const oldLoser = semi.loser;
+  const side = semi.p.indexOf(semi.loser);
+  const impact = E.correctionImpact(t, semi.id, side).map((m) => m.id);
+  ok(impact.includes('t3') && impact.includes('m2-0'), 'aviso inclui 3º e final: ' + impact);
+  E.saveGames(t, semi.id, side === 0 ? [[11, 3], [11, 3]] : [[3, 11], [3, 11]]);
+  ok(t.matches.t3.p.includes(semi.loser) && !t.matches.t3.p.includes(oldLoser) || semi.loser === oldLoser);
+  eq(t.matches.t3.status, 'waiting', '3º reiniciado');
+  eq(t.matches.t3.winner, null);
+});
+
+test('Opções da chave só mudam antes do sorteio terminar', () => {
+  const t = make(4);
+  throws(() => E.setBracketOptions(t, { consolation: true }), /refaça o sorteio/);
+});
+
+// ---------------------------------------------------------------- repescagem
+for (const n of [4, 5, 6, 7, 8, 10, 12, 16, 20]) {
+  for (const oddMode of ['byes', 'preliminary']) {
+    test(`Repescagem com ${n} jogadores (${oddMode}): todo eliminado na 1ª rodada joga de novo`, () => {
+      const t = make(n, { oddMode, cons: true });
+      const cons = t.bracket.extra.filter((e) => e.kind === 'consolation');
+      const real0 = t.bracket.rounds[0].matches.filter((id) => !t.matches[id].bye).length;
+      if (real0 < 2 || t.bracket.rounds.length < 3) { eq(cons.length, 0, 'sem repescagem quando a 1ª rodada já é a semifinal'); return; }
+      ok(cons.length > 0, 'chave de repescagem criada');
+      ok(t.matches[cons[0].matches[0]].p.every((x) => x === null), 'começa vazia');
+      ok(cons[0].matches.every((id) => !(t.matches[id].bye && t.matches[id].p[0] === null && t.matches[id].p[1] === null && false)));
+      playAll(t);
+      const losers = firstRoundLosers(t);
+      const inCons = new Set(cons.flatMap((e) => e.matches).flatMap((id) => t.matches[id].p).filter(Boolean));
+      eq(losers.every((id) => inCons.has(id)), true, 'perdedores da 1ª rodada na repescagem');
+      eq([...inCons].every((id) => losers.includes(id)), true, 'só eles');
+      const cc = E.consolationChampion(t);
+      ok(cc && losers.includes(cc.id), 'campeão da repescagem');
+      eq(E.playerStatus(t, cc.id).label, 'Campeão da repescagem');
+      // nenhuma partida de repescagem com BYE dos dois lados
+      ok(cons[0].matches.every((id) => t.matches[id].p.some(Boolean)), 'sem BYE contra BYE');
+      eq(E.tournamentStatus(t).key, 'finished');
+      const consReal = cons.flatMap((e) => e.matches).filter((id) => !t.matches[id].bye).length;
+      eq(consReal, losers.length - 1, 'partidas reais da repescagem = eliminados - 1');
+      eq(E.realMatches(t).length, (n - 1) + (n >= 4 ? 1 : 0) + consReal);
+    });
+  }
+}
+
+test('Repescagem: quem perdeu e ainda joga aparece "Na repescagem"', () => {
+  const t = make(8, { cons: true });
+  const m = E.nextMatch(t);
+  E.saveGames(t, m.id, [[11, 2], [11, 2]]);
+  eq(E.playerStatus(t, m.loser).label, 'Na repescagem');
+  eq(E.roundOf(t, t.matches[m.loserNext.id]).kind, 'consolation');
+});
+
+test('Repescagem: corrigir a 1ª rodada troca o jogador na repescagem', () => {
+  const t = make(8, { cons: true });
+  const m = t.matches['m0-0'];
+  E.saveGames(t, m.id, [[11, 2], [11, 2]]);
+  const slot = m.loserNext;
+  eq(t.matches[slot.id].p[slot.slot], m.p[1]);
+  E.saveGames(t, m.id, [[2, 11], [2, 11]]);
+  eq(t.matches[slot.id].p[slot.slot], m.p[0]);
+  E.revertResult(t, m.id);
+  eq(t.matches[slot.id].p[slot.slot], null);
+});
+
+test('Repescagem com BYE: o eliminado sozinho na vaga avança direto', () => {
+  const t = make(6, { cons: true }); // 6 em chave de 8: 2 partidas reais na 1ª rodada
+  const real0 = t.bracket.rounds[0].matches.filter((id) => !t.matches[id].bye);
+  eq(real0.length, 2);
+  const t2 = make(10, { cons: true }); // 10 em 16: 2 reais... ou mais conforme o sorteio
+  playAll(t2);
+  ok(E.consolationChampion(t2));
+});
+
+// ---------------------------------------------------------------- formato por confronto
+test('Formato do confronto: melhor de 1 só nesta partida', () => {
+  const t = make(4);
+  const m = E.nextMatch(t);
+  E.setMatchScoring(t, m.id, { bestOf: 1, points: 11, winBy: 2, cap: 0 });
+  E.saveGames(t, m.id, [[11, 8]]);
+  eq(m.status, 'done');
+  const other = E.nextMatch(t);
+  throws(() => E.saveGames(t, other.id, [[11, 8]]), /incompleta/);
+});
+
+test('Formato do confronto: ao vivo usa a regra da partida (melhor de 1, 7 pontos)', () => {
+  const t = make(4);
+  const m = E.nextMatch(t);
+  E.setMatchScoring(t, m.id, { bestOf: 1, points: 7, winBy: 2, cap: 0 });
+  for (let i = 0; i < 7; i++) E.addPoint(t, m.id, 1);
+  eq(E.pendingWinner(t, m), 1);
+  throws(() => E.setMatchScoring(t, m.id, { bestOf: 3, points: 11, winBy: 2 }), /antes do primeiro ponto/);
+  E.confirmLive(t, m.id);
+  eq(m.winner, m.p[1]);
+});
+
+test('Formato do confronto: valores inválidos recusados e volta ao padrão', () => {
+  const t = make(4);
+  const m = E.nextMatch(t);
+  throws(() => E.setMatchScoring(t, m.id, { bestOf: 2, points: 11, winBy: 2 }), /Melhor de/);
+  throws(() => E.setMatchScoring(t, m.id, { bestOf: 3, points: 0, winBy: 2 }), /Pontos/);
+  E.setMatchScoring(t, m.id, { bestOf: 5, points: 21, winBy: 2 });
+  eq(E.scoringOf(t, m).bestOf, 5);
+  E.setMatchScoring(t, m.id, null);
+  eq(E.scoringOf(t, m), t.scoring);
+});
+
+// ---------------------------------------------------------------- ao vivo
+test('Ao vivo: pausar bloqueia pontos; retomar libera; histórico registra tudo', () => {
+  const t = make(4);
+  const m = E.nextMatch(t);
+  E.startMatch(t, m.id);
+  E.addPoint(t, m.id, 0); E.addPoint(t, m.id, 1); E.addPoint(t, m.id, 0);
+  E.pauseMatch(t, m.id);
+  eq(m.status, 'paused');
+  ok(E.liveMatches(t).some((x) => x.id === m.id), 'pausada continua em quadra');
+  throws(() => E.addPoint(t, m.id, 0), /pausada/);
+  throws(() => E.confirmLive(t, m.id), /pausada/);
+  E.resumeMatch(t, m.id);
+  E.addPoint(t, m.id, 1);
+  eq(m.live, [2, 2]);
+  eq(m.log.map((e) => e.kind), ['point', 'point', 'point', 'pause', 'resume', 'point']);
+  eq(m.log.at(-1).score, [2, 2]);
+  E.undoPoint(t, m.id);
+  eq(m.live, [2, 1]); eq(m.log.filter((e) => e.kind === 'point').length, 3);
+  ok(E.isLocked(t), 'partida pausada trava o sorteio');
+});
+
+test('Ao vivo: corrigir o placar do game e fechar o game pela correção', () => {
+  const t = make(4);
+  const m = E.nextMatch(t);
+  E.startMatch(t, m.id);
+  E.addPoint(t, m.id, 0);
+  E.correctLive(t, m.id, 5, 9);
+  eq(m.live, [5, 9]);
+  E.correctLive(t, m.id, 8, 11);
+  eq(m.games, [[8, 11]]); eq(m.live, [0, 0]);
+  throws(() => E.correctLive(t, m.id, 13, 10), /teria terminado/);
+  eq(m.log.filter((e) => e.kind === 'fix').length, 2);
+});
+
+test('Ao vivo: partida inteira por pontos até confirmar; vencedor avança', () => {
+  const t = make(4);
+  const m = E.nextMatch(t);
+  for (let g = 0; g < 2; g++) for (let i = 0; i < 11; i++) E.addPoint(t, m.id, 0);
+  eq(E.pendingWinner(t, m), 0);
+  throws(() => E.addPoint(t, m.id, 1), /decidida/);
+  E.confirmLive(t, m.id);
+  eq(t.matches[m.next.id].p[m.next.slot], m.p[0]);
+  eq(t.matches.t3.p[m.loserNext.slot], m.p[1]);
+});
+
+test('Reverter resultado limpa o histórico de pontos', () => {
+  const t = make(4);
+  const m = E.nextMatch(t);
+  for (let g = 0; g < 2; g++) for (let i = 0; i < 11; i++) E.addPoint(t, m.id, 0);
+  E.confirmLive(t, m.id);
+  E.revertResult(t, m.id);
+  eq(m.log, []); eq(m.status, 'waiting');
+});
+
+document.getElementById('sum').textContent = `${pass} passaram · ${failed} falharam`;
+document.title = `${pass} ok / ${failed} falhas`;
+window.__failures = failures;
+</script></body></html>

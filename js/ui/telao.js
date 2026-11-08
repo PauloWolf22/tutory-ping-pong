@@ -23,7 +23,7 @@ function MiniMatch({ t, m, label }) {
   const [a, b] = m.p.map((id) => playerById(t, id));
   return html`<div class="tv-mini glass"><span class="overline">${label}</span>
     <div class="tv-mini-row"><${Ava} player=${a} size=${64} /><b>${displayName(a) || 'A definir'}</b><i>${E.isFinished(m) ? E.scoreText(t, m) : 'VS'}</i><b>${displayName(b) || 'A definir'}</b><${Ava} player=${b} size=${64} /></div>
-    <small>${t.bracket.rounds[m.round].name}</small></div>`;
+    <small>${E.roundOf(t, m).name}</small></div>`;
 }
 
 function TvHome({ t }) {
@@ -59,7 +59,7 @@ function TvVersus({ t }) {
   if (!m) return html`<section class="tv-screen tv-center"><h1>Aguardando o sorteio</h1></section>`;
   return html`<section class="tv-screen tv-versus">
     <div class="tv-full stage-host" ref=${host}></div>
-    <div class="tv-vs-head"><span class="overline">Jogo ${m.number}</span><h1>${t.bracket.rounds[m.round].name}</h1></div>
+    <div class="tv-vs-head"><span class="overline">Jogo ${m.number}</span><h1>${E.roundOf(t, m).name}</h1></div>
     <div class="tv-vs-mark" key=${m.id}>VS</div>
     <div class="tv-vs-foot">
       <div><small>${a ? 'Nº ' + String(a.number).padStart(2, '0') : ''}</small><h2>${displayName(a) || 'A definir'}</h2></div>
@@ -88,7 +88,7 @@ function TvScore({ t }) {
   if (!m) return html`<section class="tv-screen tv-center"><h1>Aguardando o sorteio</h1></section>`;
   return html`<section class="tv-screen tv-score">
     <div class="tv-score-stage stage-host" ref=${host}></div>
-    <div class="tv-score-title"><span class="overline">Jogo ${m.number}</span><h1>${t.bracket.rounds[m.round].name}</h1></div>
+    <div class="tv-score-title"><span class="overline">Jogo ${m.number}</span><h1>${E.roundOf(t, m).name}</h1></div>
     <div class="tv-score-board"><${Scoreboard} t=${t} m=${m} big=${true} /></div>
   </section>`;
 }

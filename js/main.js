@@ -1,5 +1,6 @@
 import { html, render, store, useDoc, useRoute, Overlays, useState, useEffect, CatBar } from './ui/lib.js';
 import { EventsPage } from './ui/events.js';
+import { LivePage, liveAcross } from './ui/live.js';
 import { HomePage } from './ui/home.js';
 import { PlayersPage } from './ui/players.js';
 import { EditorPage } from './ui/editor.js';
@@ -36,9 +37,10 @@ function Shell({ route, children }) {
         ${LINKS.map(([path, label]) => html`<a key=${path} href=${'#/' + path} class=${here === path ? 'on' : ''}>${label}</a>`)}
       </nav>
       <div class="nav-right">
-        <a class="btn sm" href="#/telao" target="_blank" rel="noopener">Telão</a>
+        ${liveAcross(store.doc).length > 0 && html`<a class="btn sm live-pill" href="#/ao-vivo" title="Partidas em andamento"><i></i>AO VIVO</a>`}
+        <a class="btn sm tv-link" href="#/telao" target="_blank" rel="noopener">Telão</a>
         <a class=${'btn sm ' + (sports.user ? '' : 'primary')} href="#/conta">${sports.user ? (sports.profile?.nick || 'Minha conta') : 'Entrar'}</a>
-        <a class=${"btn sm adm-btn " + (store.admin ? "on" : "")} href="#/admin" title=${store.admin ? "Painel do administrador" : "Entrar como administrador"}>${store.admin ? "Painel ADM" : "ADM"}</a>
+        <a class=${"btn sm adm-btn " + (store.admin ? "on" : "")} href="#/admin" title=${store.admin ? "Painel do administrador" : "Entrar como administrador"}>${store.admin ? html`<span class="hide-sm">Painel </span>ADM` : "ADM"}</a>
       </div>
     </header>
     ${CHAMPIONSHIP.has(here) && html`<${CatBar} />`}
@@ -71,6 +73,7 @@ function App() {
   if (page === 'campeao') return html`<${ChampionPage} /><${Overlays} />`;
   switch (page) {
     case 'campeonatos': screen = html`<${EventsPage} />`; break;
+    case 'ao-vivo': screen = html`<${LivePage} />`; break;
     case 'jogadores': screen = html`<${PlayersPage} />`; break;
     case 'avatar': screen = html`<${EditorPage} key=${arg} id=${arg} />`; break;
     case 'sorteio': screen = html`<${DrawPage} />`; break;

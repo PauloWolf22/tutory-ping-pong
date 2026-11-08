@@ -7,11 +7,13 @@ import { CAT_LABEL, FORMAT_LABEL, MODALITY_LABEL } from '../core/event.js';
 const modalityName = (key) => MODALITY_LABEL[key] || key;
 
 function Podium({ t }) {
-  const champ = E.champion(t), vice = E.viceChampion(t);
+  const champ = E.champion(t), vice = E.viceChampion(t), third = E.thirdPlace(t), cons = E.consolationChampion(t);
   if (!champ) return null;
   return html`<ol class="ev-podium">
     <li class="gold"><${Ava} player=${champ} size=${44} /><span><small>Campeão</small>${displayName(champ)}</span></li>
     ${vice && html`<li><${Ava} player=${vice} size=${36} /><span><small>Vice</small>${displayName(vice)}</span></li>`}
+    ${third && html`<li><${Ava} player=${third} size=${32} /><span><small>3º lugar</small>${displayName(third)}</span></li>`}
+    ${cons && html`<li><${Ava} player=${cons} size=${28} /><span><small>Repescagem</small>${displayName(cons)}</span></li>`}
   </ol>`;
 }
 
@@ -22,7 +24,7 @@ function Results({ t }) {
   return html`<div class="ev-results">
     <button class="btn sm ghost" aria-expanded=${open} onClick=${() => setOpen(!open)}>${open ? 'Esconder resultados' : `Ver ${done.length} resultado${done.length > 1 ? 's' : ''}`}</button>
     ${open && html`<ul>${done.map((m) => html`<li key=${m.id}>
-      <span class="overline">${t.bracket.rounds[m.round].short}</span>
+      <span class="overline">${E.roundOf(t, m).short}</span>
       <span class=${m.winner === m.p[0] ? 'w' : ''}>${displayName(playerById(t, m.p[0]))}</span>
       <b>${E.scoreText(t, m)}</b>
       <span class=${m.winner === m.p[1] ? 'w' : ''}>${displayName(playerById(t, m.p[1]))}</span></li>`)}</ul>`}

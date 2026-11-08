@@ -198,7 +198,7 @@ export function championshipImport(t, { modality = 'pingpong', key, gameWins, ch
     const g = m.manual || (m.wo ? null : gameWins(m, t.scoring));
     items.push({ source: `${key}:${m.id}`, modality, p1: a, p2: b, winner: w, score: m.wo ? 'WO' : g ? `${g[0]} x ${g[1]}` : null, category, played_on: day(m.endedAt) });
   }
-  const label = `${t.meta.name} · ${t.meta.edition}`;
+  const label = [t.meta.name, t.meta.edition].filter(Boolean).join(' · ');
   const awards = [];
   for (const [p, place] of [[champion, 'campeao'], [vice, 'vice'], [third, 'terceiro']]) {
     if (p && link.get(p.id)) awards.push({ source: `${key}:${place}`, modality, user_id: link.get(p.id), place, label, category });

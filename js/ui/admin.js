@@ -184,6 +184,16 @@ function Settings({ t }) {
       <a class="btn" href="#/regulamento">Editar regulamento</a>
       <button class="btn" aria-pressed=${sound} onClick=${() => { setSound(!sound); setS(!sound); }}>${sound ? 'Som ligado' : 'Ligar som aqui'}</button>
     </div>
+    <div class="bracket-opts">
+      <span class="overline">Chave</span>
+      <label class="switch-row"><input type="checkbox" checked=${t.settings.thirdPlace} disabled=${!!t.bracket}
+        onChange=${(e) => act((d) => E.setBracketOptions(d, { thirdPlace: e.target.checked }))} />
+        <span><b>Disputa de 3º lugar</b><small>Os perdedores das semifinais jogam pelo 3º e 4º lugares.</small></span></label>
+      <label class="switch-row"><input type="checkbox" checked=${t.settings.consolation} disabled=${!!t.bracket}
+        onChange=${(e) => act((d) => E.setBracketOptions(d, { consolation: e.target.checked }))} />
+        <span><b>Repescagem</b><small>Quem perde na 1ª rodada joga uma chave própria. Precisa de pelo menos quartas de final.</small></span></label>
+      ${t.bracket && html`<p class="muted hint">A chave já foi criada. Para mudar, refaça o sorteio antes das partidas.</p>`}
+    </div>
   </section>`;
 }
 

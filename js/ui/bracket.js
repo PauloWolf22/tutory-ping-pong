@@ -1,5 +1,6 @@
 import { html, useState, useEffect, useRef, useMemo, useLayoutEffect, useDoc, Ava, playerById, displayName, store, useMediaQuery } from './lib.js';
 import * as E from '../core/engine.js';
+import { MatchRow } from './match.js';
 
 const CARD_W = 232, CARD_H = 84, GAP_X = 46, GAP_Y = 16, HEAD_H = 44;
 
@@ -79,7 +80,7 @@ function Row({ t, m, side, ava }) {
   let score = '';
   if (m.manual) score = m.manual[side];
   else if (m.wo) score = won ? 'WO' : '';
-  else if (m.games.length || m.status === 'live') score = E.gameWins(m, t.scoring)[side];
+  else if (m.games.length || m.status === 'live' || m.status === 'paused') score = E.gameWins(m, E.scoringOf(t, m))[side];
   const empty = !p && (m.bye ? 'BYE' : 'A definir');
   return html`<div class=${`bk-row ${won ? 'won' : ''} ${lost ? 'lost' : ''}`} data-slot=${`${m.id}:${side}`}>
     <${Ava} player=${p} size=${ava} state=${won ? 'win' : ''} />
@@ -178,7 +179,36 @@ export function BracketPage() {
         ${t.bracket && html`<p>${t.bracket.players} jogadores · ${E.realMatches(t).length} partidas. ${store.admin ? 'Toque em um confronto para registrar o resultado.' : 'Toque em um confronto para ver os detalhes.'}</p>`}</div>
       ${champion && html`<a class="btn gold" href="#/campeao">Ver campeão <span class="arrow">→</span></a>`}
     </div>
-    ${t.bracket ? html`<${Bracket} t=${t} />` : html`<div class="glass empty"><h3>A chave ainda não foi sorteada</h3>
+    ${t.bracket ? html`<${Bracket} t=${t} /><${Extras} t=${t} />` : html`<div class="glass empty"><h3>A chave ainda não foi sorteada</h3>
       <p>Ela aparece aqui assim que o sorteio terminar.</p><a class="btn primary" href="#/sorteio">Ir para o sorteio <span class="arrow">→</span></a></div>`}
   </main>`;
+}
+
+// Fora da árvore: disputa de 3º lugar e repescagem (eliminados da 1ª rodada), na ordem em que são jogadas.
+function Extras({ t }) {
+  const extra = t.bracket.extra || [];
+  if (!extra.length) return null;
+  const third = extra.find((e) => e.kind === 'third');
+  const cons = extra.filter((e) => e.kind === 'consolation');
+  const champ = E.consolationChampion(t);
+  return html`<div class="bk-extras">
+    ${third && html`<section class="glass card bk-extra third">
+      <div class="panel-head"><div><span class="overline">Perdedores das semifinais</span><h2>Disputa de 3º lugar</h2></div>
+        ${E.thirdPlace(t) && html`<span class="chip champion">3º: ${E.thirdPlace(t).name}</span>`}</div>
+      <div class="match-list">${third.matches.map((id) => html`<${MatchRow} key=${id} t=${t} m=${t.matches[id]} />`)}</div>
+    </section>`}
+    ${cons.length > 0 && html`<section class="glass card bk-extra cons">
+      <div class="panel-head"><div><span class="overline">Eliminados na 1ª rodada</span><h2>Repescagem</h2></div>
+        ${champ && html`<span class="chip champion">Campeão: ${champ.name}</span>`}</div>
+      <p class="muted hint">Quem perde o primeiro jogo continua jogando aqui. Não volta para a chave principal.</p>
+      <div class="cons-rounds">${cons.map((r) => {
+        const list = r.matches.map((id) => t.matches[id]);
+        const byes = list.filter((m) => m.bye && m.winner);
+        return html`<div key=${r.key} class="cons-round"><h3 class="round-title consolation">${r.name}</h3>
+          <div class="match-list">${list.filter((m) => !m.bye).map((m) => html`<${MatchRow} key=${m.id} t=${t} m=${m} />`)}</div>
+          ${byes.map((m) => html`<p key=${m.id} class="muted hint">${playerById(t, m.winner)?.name} avança direto (sem adversário nesta rodada).</p>`)}
+        </div>`;
+      })}</div>
+    </section>`}
+  </div>`;
 }
