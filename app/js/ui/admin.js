@@ -203,6 +203,7 @@ export function AdminPage() {
         ${focus && html`<a class="btn primary" href=${'#/partida/' + focus.id}>${live ? 'Partida em andamento' : 'Próxima partida'} <span class="arrow">→</span></a>`}
         <a class="btn" href="#/jogadores">Participantes</a>
         <a class="btn" href="#/aprovacoes">Aprovações</a>
+        <a class="btn" href="#/pontuacao">Pontuação</a>
       </div>
     </div>
     ${store.mode === 'local' && html`<p class="notice warn" style="margin-bottom:18px">Modo local: sem o servidor, os dados ficam só neste navegador. Para vários aparelhos, abra pelo <b>start.bat</b>.</p>`}

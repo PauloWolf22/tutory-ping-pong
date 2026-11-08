@@ -81,3 +81,48 @@ TUTORY SPORTS nos títulos, cabeçalho, tela inicial e telão. O campeonato salv
 O Paulo escolheu tabela protegida. No site online o financeiro não fica mais no documento público: vive em `private.football_finance`, lido e gravado só com a sessão do administrador (`supabase/football-finance.sql`, ainda **não rodado** no banco real). Gravação com número de revisão: se outro aparelho alterou antes, o app recarrega e avisa. "Nova terça" fecha o financeiro (resumo guardado nas terças anteriores) antes de limpar a lista. O arquivo público das terças não leva dados de pagamento. Financeiro que tenha ficado no documento é movido para a tabela e apagado do documento na primeira abertura.
 
 Testes: futebol 40 e regressão 83, todos passando. Na tela, com banco simulado, foram testados: salvar valores, marcar pago, conflito entre aparelhos, nova terça e documento sem dados de pagamento.
+
+---
+
+# Fase 3: Rankings e resultados (08/11/2026)
+
+## O que mudou
+- **Pontuação por modalidade** (Painel > Pontuação). A tabela `ranking_points` tem uma linha padrão `*` e linhas próprias por modalidade.
+  - Pontos para vitória e derrota em campeonato, vitória e derrota em amistoso, participação, campeão, vice, 3º lugar e conquista.
+  - Cada modalidade tem um peso no ranking geral, de 0 a 10.
+  - A linha padrão herda os valores antigos: vitória 3, derrota 1, título 10, vice 5.
+- **Rankings separados:**
+  - Uma aba por modalidade: Ping Pong, Jiu-Jitsu, EA FC, Call of Duty, Mortal Kombat, Counter-Strike e as novas.
+  - Cada uma filtra Todos, Masculino ou Feminino.
+- **Geral e TUTORY Gaming normalizados.** Em cada modalidade o líder tem nota 100 e os demais ficam proporcionais; a nota é multiplicada pelo peso da modalidade. Assim, unidades diferentes não são somadas direto. TUTORY Gaming soma só os jogos individuais. Futebol continua sem ranking individual.
+- **Jiu-Jitsu por faixa.**
+  - A pessoa informa a faixa e o administrador valida (Aprovações > filtro Faixas > Validar faixa).
+  - Só faixa validada entra no ranking por faixa. Trocar a faixa no perfil tira a validação.
+- **Counter-Strike por equipe.** No amistoso a pessoa marca a própria equipe e a adversária (até 5 em cada lado), e cada integrante ganha ou perde no ranking. A mesma pessoa não pode estar nas duas equipes.
+- **Campeonato → ranking:**
+  - Escolha da modalidade e da categoria (masculino, feminino ou misto).
+  - Entram os jogos com a data real, além de campeão, vice, participação de quem jogou e 3º lugar. O 3º lugar só entra quando o campeonato tiver a disputa de 3º, que é da fase 6.
+  - Reenviar não duplica nem altera o que já está igual. O ping pong mantém o mesmo identificador das versões anteriores.
+- **Amistosos** contam com pontuação própria. Um amistoso repetido (mesmo dia, mesma dupla, mesmo placar e mesmo vencedor, lançado por qualquer um dos lados) é recusado.
+- **Conquistas manuais** (Painel > Pontuação): valem os pontos de "conquista" da modalidade. Não duplicam e podem ser removidas.
+- **Modalidades futuras:** o administrador cria, ativa e desativa. Desativar esconde a modalidade das telas sem apagar resultados.
+- **Auditoria:** um gatilho no banco registra toda mudança em resultados, colocações, pontuação, modalidades e status ou faixa de contas, com quem fez (administrador ou a conta). A lista aparece no Painel > Pontuação.
+
+## Banco
+Tudo em `supabase/sports.sql`, que pode ser rodado de novo sem perder dados. **Rode o script antes de publicar o site**: a versão nova do app lê a tabela `ranking_points` e a função `sp_ranking_general`.
+
+## Testado
+- Tutory Sports: 27 testes (antes 18), cobrindo:
+  - pontuação por modalidade;
+  - faixa validada;
+  - equipe;
+  - amistoso repetido;
+  - ranking geral normalizado e com peso;
+  - TUTORY Gaming e filtro por categoria;
+  - conquistas;
+  - 3º lugar, participação e categoria vindos do campeonato;
+  - auditoria, incluindo quem fez cada ação;
+  - modalidade nova e desativada.
+- Total: motor 52, futebol 40, nuvem 13, Tutory Sports 27, todos passando.
+- Telas com banco simulado: abas do ranking, filtro por faixa, amistoso de Counter-Strike por equipe, Pontuação, Aprovações. Em 375 px não há rolagem lateral da página; as abas do ranking rolam dentro da própria faixa.
+- **Não testado:** o SQL no banco real, que depende do Paulo rodar o script. O teste com o banco simulado segue as mesmas regras, mas não substitui o banco real.

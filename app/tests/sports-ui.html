@@ -9,7 +9,7 @@
 import { html, render, Overlays, store, useDoc, useRoute } from '../js/ui/lib.js';
 import * as E from '../js/core/engine.js';
 import { sports } from '../js/core/sports.js';
-import { AccountPage, RankingPage, FriendliesPage, ApprovalsPage } from '../js/ui/sports.js';
+import { AccountPage, RankingPage, FriendliesPage, ApprovalsPage, PointsPage } from '../js/ui/sports.js';
 import { createMockSportsDb } from './sports-mock.js';
 
 const cloud = {
@@ -38,7 +38,11 @@ for (const [a, b, m, score] of games) {
 }
 db.current = { id: ids.bia };
 await db.report({ modality: 'pingpong', opponent: ids.eva, won: true, score: '2 x 0' });
-await db.adminImport('tok', [], [{ source: 'x:campeao', modality: 'pingpong', user_id: ids.ana, place: 'campeao', label: '1ª edição' }]);
+await db.adminImport('tok', [], [{ source: 'x:campeao', modality: 'pingpong', user_id: ids.ana, place: 'campeao', label: '1ª edição' }, { source: 'x:vice', modality: 'pingpong', user_id: ids.eva, place: 'vice', label: '1ª edição' }]);
+db.current = { id: ids.caio }; await db.saveProfile({ name: 'Caio Reis', gender: 'm', nick: 'Caião', belt: 'Azul' });
+db.current = { id: ids.davi }; await db.saveProfile({ name: 'Davi Melo', gender: 'm', belt: 'Roxa' });
+await db.adminSetBelt('tok', ids.davi, 'Roxa', true);
+db.current = { id: ids.caio }; { const { id } = await db.report({ modality: 'cs', opponent: ids.davi, won: true, score: '13 x 9', team: [ids.ana], opponents: [ids.bia] }); await db.adminDecide('tok', id, true); }
 await store.login('x');
 store.update((t) => { for (const [, n] of people) E.addPlayer(t, { name: n }); });
 
@@ -50,9 +54,9 @@ await sports.init(db);
 const App = () => {
   useDoc();
   const [page] = useRoute();
-  const P = { amistosos: FriendliesPage, conta: AccountPage, aprovacoes: ApprovalsPage }[page] || RankingPage;
+  const P = { amistosos: FriendliesPage, conta: AccountPage, aprovacoes: ApprovalsPage, pontuacao: PointsPage }[page] || RankingPage;
   return html`<nav style="display:flex;gap:10px;padding:10px 16px;flex-wrap:wrap">
-    ${['ranking', 'amistosos', 'conta', 'aprovacoes'].map((p) => html`<a class="btn sm" href=${'#/' + p}>${p}</a>`)}</nav>
+    ${['ranking', 'amistosos', 'conta', 'aprovacoes', 'pontuacao'].map((p) => html`<a class="btn sm" href=${'#/' + p}>${p}</a>`)}</nav>
     <${P} /><${Overlays} />`;
 };
 render(html`<${App} />`, document.getElementById('app'));

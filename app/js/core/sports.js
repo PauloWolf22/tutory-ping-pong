@@ -64,23 +64,31 @@ export async function createSportsDb({ url, anonKey }) {
     myProfile: (uid) => guard(() => client.from('profiles').select('*').eq('id', uid).maybeSingle()),
     profiles: () => guard(() => client.from('profiles').select('id,name,nick,gender,belt,avatar').eq('status', 'approved').order('name')),
     modalities: () => guard(() => client.from('modalities').select('*').eq('active', true).order('sort')),
-    rules: () => guard(() => client.from('ranking_rules').select('win,loss,champion,vice').eq('id', 1).maybeSingle()),
+    points: () => guard(() => client.from('ranking_points').select('*')),
+    modalitiesAll: () => guard(() => client.from('modalities').select('*').order('sort')),
     results: (modality, limit = 30) => guard(() => {
       let q = client.from('results').select('*').order('created_at', { ascending: false }).limit(limit);
       if (modality) q = q.eq('modality', modality);
       return q;
     }),
     awards: (modality) => guard(() => client.from('awards').select('*').eq('modality', modality).order('created_at', { ascending: false })),
-    ranking: (modality, gender) => rpc('sp_ranking', { p_modality: modality, p_gender: gender || null }),
+    ranking: (modality, gender, belt) => rpc('sp_ranking', { p_modality: modality, p_gender: gender || null, ...(belt && { p_belt: belt }) }),
+    rankingGeneral: (family, gender) => rpc('sp_ranking_general', { p_family: family || null, p_gender: gender || null }),
     saveProfile: (p) => rpc('sp_save_profile', { p_name: p.name, p_nick: p.nick || null, p_gender: p.gender, p_belt: p.belt || null }),
     saveAvatar: (avatar) => rpc('sp_save_my_avatar', { p_avatar: avatar }),
-    report: (r) => rpc('sp_report_result', { p_modality: r.modality, p_opponent: r.opponent, p_won: r.won, p_score: r.score || null, p_method: r.method || null, p_played_on: r.playedOn || null }),
+    report: (r) => rpc('sp_report_result', { p_modality: r.modality, p_opponent: r.opponent, p_won: r.won, p_score: r.score || null, p_method: r.method || null, p_played_on: r.playedOn || null, p_team: r.team?.length ? r.team : null, p_opponents: r.opponents?.length ? r.opponents : null }),
     cancel: (id) => rpc('sp_cancel_result', { p_id: id }),
     adminPending: (token) => rpc('sp_admin_pending', { p_token: token }),
     adminSetStatus: (token, id, status) => rpc('sp_admin_set_status', { p_token: token, p_id: id, p_status: status }),
     adminDecide: (token, id, approve) => rpc('sp_admin_decide', { p_token: token, p_id: id, p_approve: approve }),
     adminDelete: (token, id) => rpc('sp_admin_delete_result', { p_token: token, p_id: id }),
     adminImport: (token, items, awards) => rpc('sp_admin_import', { p_token: token, p_items: items, p_awards: awards }),
+    adminSetPoints: (token, modality, rules) => rpc('sp_admin_set_points', { p_token: token, p_modality: modality, p_rules: rules }),
+    adminSetBelt: (token, id, belt, verified) => rpc('sp_admin_set_belt', { p_token: token, p_id: id, p_belt: belt || null, p_verified: verified }),
+    adminSaveModality: (token, m) => rpc('sp_admin_save_modality', { p_token: token, p_m: m }),
+    adminAward: (token, user, modality, label) => rpc('sp_admin_award', { p_token: token, p_user: user, p_modality: modality, p_label: label }),
+    adminDeleteAward: (token, id) => rpc('sp_admin_delete_award', { p_token: token, p_id: id }),
+    adminAudit: (token, limit = 100) => rpc('sp_admin_audit', { p_token: token, p_limit: limit }),
     finGet: (token) => rpc('sp_fin_get', { p_token: token }),
     finSave: (token, rev, data) => rpc('sp_fin_save', { p_token: token, p_rev: rev, p_data: data }),
     requestReset: (email) => rpc('sp_request_reset', { p_email: email }),
@@ -161,24 +169,41 @@ export const sports = {
   },
 };
 
-// Pontos de uma linha do ranking, com as regras vindas do banco.
-export const pointsOf = (row, rules) => row.wins * rules.win + row.losses * rules.loss + row.titles * rules.champion + row.vices * rules.vice;
+// Campos da pontuação (tabela ranking_points), na ordem da tela do administrador.
+export const POINT_FIELDS = [
+  ['win', 'Vitória em campeonato'], ['loss', 'Derrota em campeonato'],
+  ['friendly_win', 'Vitória em amistoso'], ['friendly_loss', 'Derrota em amistoso'],
+  ['participation', 'Participação em campeonato'], ['champion', 'Campeão'], ['vice', 'Vice'], ['third', 'Terceiro lugar'],
+  ['achievement', 'Conquista'],
+];
+export const BELTS = ['Branca', 'Cinza', 'Amarela', 'Laranja', 'Verde', 'Azul', 'Roxa', 'Marrom', 'Preta'];
+export const CATEGORY_LABEL = { m: 'Masculino', f: 'Feminino', misto: 'Misto' };
+
+// Pontuação de uma modalidade: a linha própria ou a padrão ('*').
+export const rulesFor = (list, modality) => (list || []).find((r) => r.modality === modality) || (list || []).find((r) => r.modality === '*') || null;
 
 // Monta o lote que leva um campeonato encerrado ao ranking. Só entram jogos com os dois jogadores ligados a contas.
-export function championshipImport(t, { modality = 'pingpong', key, gameWins, champion, vice }) {
+// Cada jogo e cada colocação tem um "source" fixo: enviar de novo atualiza, nunca duplica.
+export function championshipImport(t, { modality = 'pingpong', key, gameWins, champion, vice, third = null, category = null }) {
   const link = new Map(t.players.filter((p) => p.userId).map((p) => [p.id, p.userId]));
+  const day = (ms) => (ms ? new Date(ms - new Date(ms).getTimezoneOffset() * 60000).toISOString().slice(0, 10) : null);
   const items = [];
+  const played = new Set();
   for (const m of Object.values(t.matches || {})) {
     if (m.bye || !m.winner || !m.p?.[0] || !m.p?.[1]) continue;
     const a = link.get(m.p[0]), b = link.get(m.p[1]), w = link.get(m.winner);
+    if (a) played.add(a);
+    if (b) played.add(b);
     if (!a || !b || !w || a === b) continue;
     const g = m.manual || (m.wo ? null : gameWins(m, t.scoring));
-    items.push({ source: `${key}:${m.id}`, modality, p1: a, p2: b, winner: w, score: m.wo ? 'WO' : g ? `${g[0]} x ${g[1]}` : null });
+    items.push({ source: `${key}:${m.id}`, modality, p1: a, p2: b, winner: w, score: m.wo ? 'WO' : g ? `${g[0]} x ${g[1]}` : null, category, played_on: day(m.endedAt) });
   }
   const label = `${t.meta.name} · ${t.meta.edition}`;
   const awards = [];
-  if (champion && link.get(champion.id)) awards.push({ source: `${key}:campeao`, modality, user_id: link.get(champion.id), place: 'campeao', label });
-  if (vice && link.get(vice.id)) awards.push({ source: `${key}:vice`, modality, user_id: link.get(vice.id), place: 'vice', label });
+  for (const [p, place] of [[champion, 'campeao'], [vice, 'vice'], [third, 'terceiro']]) {
+    if (p && link.get(p.id)) awards.push({ source: `${key}:${place}`, modality, user_id: link.get(p.id), place, label, category });
+  }
+  for (const uid of played) awards.push({ source: `${key}:participacao:${uid}`, modality, user_id: uid, place: 'participacao', label, category });
   const skipped = Object.values(t.matches || {}).filter((m) => !m.bye && m.winner && m.p?.[0] && m.p?.[1]).length - items.length;
   return { items, awards, skipped };
 }

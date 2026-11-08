@@ -293,7 +293,7 @@ a.bk-card:hover { border-color: var(--beam); }
 .decided { display: grid; gap: 12px; }
 .decided h3 { font-size: 24px; }
 .sub-actions { margin-top: 12px; }
-.seg { display: inline-flex; padding: 3px; border-radius: 99px; background: rgba(3, 6, 14, 0.6); border: 1px solid var(--line); margin: 12px 0; }
+.seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; padding: 3px; border-radius: 20px; background: rgba(3, 6, 14, 0.6); border: 1px solid var(--line); margin: 12px 0; }
 .seg button { padding: 6px 15px; min-height: 34px; background: none; border: 0; border-radius: 99px; cursor: pointer; font-weight: 650; font-size: 13px; color: var(--muted); }
 .seg button.on { color: #fff; background: rgba(59, 123, 245, 0.3); }
 .games-grid { display: grid; grid-template-columns: 62px minmax(0, 1fr) minmax(0, 1fr); gap: 7px 8px; align-items: center; font-size: 13px; }
@@ -664,3 +664,41 @@ a.bk-card:hover { border-color: var(--beam); }
 .admin-door a { color: var(--muted); }
 .temp-pw { font-size: 26px; letter-spacing: 0.12em; padding: 12px 16px; border-radius: 12px; background: rgba(3, 6, 14, 0.6); border: 1px solid var(--line); text-align: center; margin: 10px 0; user-select: all; }
 .hero-sub { color: var(--muted); font-size: clamp(15px, 1.6vw, 19px); font-weight: 600; margin-top: 6px; letter-spacing: 0.02em; }
+
+/* rankings por modalidade (fase 3) */
+.rank-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.rank-tabs .option { flex: none; white-space: nowrap; }
+.rank-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.rank-belt { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.rank-belt .input { width: auto; min-height: 36px; padding: 4px 10px; }
+.rank-row.gen { grid-template-columns: 36px minmax(0, 1fr) 64px minmax(0, 1.4fr); }
+.rank-parts { display: flex; flex-wrap: wrap; gap: 4px; }
+.rank-parts .chip, .chip.belt { font-size: 11px; padding: 2px 8px; }
+.team-pick { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin: 0; }
+.team-pick legend { padding: 0 6px; font-size: 13px; }
+.team-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.champ-opts { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; margin: 10px 0; }
+.champ-opts .field { min-width: 180px; }
+.champ-opts .seg { margin: 0; }
+.pts-wrap { overflow-x: auto; margin-top: 10px; }
+.pts-table { border-collapse: collapse; font-size: 13px; min-width: 980px; width: 100%; }
+.pts-table th, .pts-table td { padding: 6px 5px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.pts-table thead th { font-size: 11px; color: var(--muted); font-weight: 600; line-height: 1.2; }
+.pts-table tbody th { font-weight: 650; min-width: 120px; }
+.pts-table tr.own th { color: #fff; }
+.pts-table tr:not(.own) .pts-in { color: var(--muted); }
+.pts-in { width: 58px; min-height: 34px; padding: 4px 6px; text-align: center; }
+.pts-act { white-space: nowrap; }
+.pts-act .btn { margin-right: 4px; }
+.plain-list { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 4px; }
+.plain-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: rgba(3, 6, 14, 0.35); font-size: 13.5px; }
+.audit-list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 4px; max-height: 420px; overflow-y: auto; font-size: 13px; }
+.audit-list li { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 10px; padding: 6px 10px; border-radius: 10px; background: rgba(3, 6, 14, 0.35); }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.check input { width: 18px; height: 18px; accent-color: var(--beam); }
+@media (max-width: 560px) {
+  .rank-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; }
+  .rank-row.gen { grid-template-columns: 26px minmax(0, 1fr) 52px; }
+  .rank-row.gen > :nth-child(4) { display: block; grid-column: 2 / -1; }
+  .audit-list li { grid-template-columns: 1fr; gap: 2px; }
+}

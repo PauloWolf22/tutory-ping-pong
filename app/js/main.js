@@ -11,7 +11,7 @@ import { AdminPage } from './ui/admin.js';
 import { TelaoPage } from './ui/telao.js';
 import { ChampionPage } from './ui/champion.js';
 import { FootballPage } from './ui/football.js';
-import { AccountPage, RankingPage, FriendliesPage, ApprovalsPage, useSports } from './ui/sports.js';
+import { AccountPage, RankingPage, FriendliesPage, ApprovalsPage, PointsPage, useSports } from './ui/sports.js';
 import { sports } from './core/sports.js';
 
 const LINKS = [
@@ -69,6 +69,7 @@ function App() {
     case 'conta': screen = html`<${AccountPage} key=${arg || 'conta'} mode=${arg} />`; break;
     case 'meu-avatar': screen = html`<${MyAvatar} />`; break;
     case 'aprovacoes': screen = html`<${ApprovalsPage} />`; break;
+    case 'pontuacao': screen = html`<${PointsPage} />`; break;
     case 'regulamento': screen = html`<${RegulationPage} />`; break;
     case 'estatisticas': screen = html`<${StatsPage} />`; break;
     case 'admin': screen = html`<${AdminPage} />`; break;
