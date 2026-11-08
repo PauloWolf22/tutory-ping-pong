@@ -6,6 +6,7 @@ import { GLTFLoader } from '../vendor/three/GLTFLoader.js';
 import * as SkeletonUtils from '../vendor/three/SkeletonUtils.js';
 import { skinMaterial, eyeMaterial, hairMaterial } from './realism.js';
 import { buildClips } from './motion.js';
+import { buildAccessories, normalizeAcc } from './accessories.js';
 
 const BASE = new URL('../../assets/humans/', import.meta.url).href;
 export const WORLD_SCALE = 1;
@@ -61,13 +62,14 @@ export function avatarFromName(name, forceGender) {
 
 // Roupa básica de cada gênero: entra sempre que faltar alguma parte (o avatar nunca fica sem roupa).
 export const BASIC_OUTFIT = {
-  male: { full: 'male_casualsuit04', top: 'elvs_crude_t-shirt_male', bottom: 'cortu_cargo_pants' },
-  female: { full: 'female_sportsuit01', top: 'joepal_crude_t-shirt_female', bottom: 'cortu_cargo_pants' },
+  male: { full: 'male_casualsuit04', top: 'elvs_crude_t-shirt_male', bottom: 'cortu_cargo_pants', shoes: 'shoes01' },
+  female: { full: 'female_sportsuit01', top: 'joepal_crude_t-shirt_female', bottom: 'cortu_cargo_pants', shoes: 'shoes03' },
 };
 // Vestimenta obrigatória: conjunto inteiro, ou parte de cima E parte de baixo.
 export function dressed(parts, gender) {
   const p = { ...parts };
   const basic = BASIC_OUTFIT[gender] || BASIC_OUTFIT.male;
+  if (!p.shoes) p.shoes = basic.shoes;
   if (p.full) { delete p.top; delete p.bottom; return p; }
   if (p.top && !p.bottom) p.bottom = basic.bottom;
   else if (p.bottom && !p.top) p.top = basic.top;
@@ -80,11 +82,16 @@ const clampMorphs = (m) => Object.fromEntries(Object.entries(m || {}).filter(([,
 export function normalizeAvatar(a = {}) {
   if (!a || a.v !== 2) a = { gender: 'male' };
   const gender = a.gender === 'female' ? 'female' : 'male';
+  // boné e óculos escuros ocupam o lugar do chapéu e dos óculos do catálogo
+  const parts = { ...(a.parts || {}) };
+  if (a.acc?.cap) delete parts.hat;
+  if (a.acc?.sunglasses) delete parts.glasses;
   return {
     v: 2, gender, skin: SKINS[a.skin] ? a.skin : 'clara',
-    morph: clampMorphs(a.morph), parts: dressed(a.parts || {}, gender), colors: { ...(a.colors || {}) },
+    morph: clampMorphs(a.morph), parts: dressed(parts, gender), colors: { ...(a.colors || {}) },
     height: a.height || 1, racket: { style: 'classic', color: '#c0262d', ...(a.racket || {}) }, pose: a.pose || 'Idle',
     medal: a.medal || null, thumb: a.thumb || null, provisional: !!a.provisional,
+    logo: normalizeLogo(a.logo), belt: BELT_COLORS[a.belt] ? a.belt : "Branca", acc: normalizeAcc(a.acc),
   };
 }
 
@@ -102,6 +109,7 @@ export function loadGender(gender) {
       const [meta, gltf] = await Promise.all([
         fetch(`${BASE}human_${gender}.json`).then((r) => r.json()),
         loader.loadAsync(`${BASE}${gender}/base.glb`),
+        preloadLogo(),
       ]);
       const template = gltf.scene;
       const clips = buildClips(template);
@@ -146,6 +154,7 @@ function restRig(template) {
 
 // Bones movidos por trilhas de posição nas animações: o deslocamento deles vai para a raiz (chão), não para o osso.
 const POSITION_DRIVEN = new Set(['pelvis', 'root']);
+const METAL_KEYS = new Set(['gold', 'silver', 'black']);
 
 // Mantido para o editor saber o catálogo sem montar um avatar.
 export const loadLibrary = () => loadGender('male');
@@ -181,7 +190,119 @@ function shareGeometry(src) {
   return g;
 }
 
-function partMaterial(std, cat, avatar) {
+// ---------------------------------------------------------------- peças TUTORY (kimono, camisa, bermuda)
+// Malhas próprias (tools/build_custom_clothes.py) com UV em regiões: tronco 0-0.6, manga direita 0.6-0.7,
+// manga esquerda 0.7-0.8, lapela 0.8-0.85, faixa 0.85-1. A logo oficial é aplicada pelo shader na região certa,
+// sem distorcer (proporção do arquivo original), com tamanho e altura ajustáveis.
+export const BELT_COLORS = { Branca: '#eeeeea', Cinza: '#8a8f96', Amarela: '#e3be2a', Laranja: '#e5822c', Verde: '#2f9e54', Azul: '#1f4fd1', Roxa: '#6b2fa3', Marrom: '#6b3e1f', Preta: '#141414' };
+export const LOGO_SPOTS = { chest: 'Peito', back: 'Costas', sleeve: 'Manga' };
+export function normalizeLogo(l = {}) {
+  const spot = (k, on) => {
+    const s = l?.[k] || {};
+    return { on: s.on ?? on, size: Math.min(1.6, Math.max(0.5, +s.size || 1)), y: Math.min(1, Math.max(-1, +s.y || 0)) };
+  };
+  return { chest: spot('chest', true), back: spot('back', true), sleeve: spot('sleeve', false), tone: ['auto', 'white', 'blue'].includes(l?.tone) ? l.tone : 'auto' };
+}
+const LOGO_RATIO = 1920 / 452; // logo-branco.png
+let logoTexture = null;
+// carregada junto com o corpo: fotos e miniaturas tiradas logo em seguida já saem com a logo
+let logoLoading = null;
+function preloadLogo() {
+  logoLoading ||= texLoader.loadAsync(new URL("../../assets/brand/logo-branco.png", import.meta.url).href).then((t) => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    logoTexture = t;
+    return t;
+  }).catch(() => null);
+  return logoLoading;
+}
+function logoMap() {
+  if (!logoTexture) {
+    logoTexture = texLoader.load(new URL('../../assets/brand/logo-branco.png', import.meta.url).href);
+    logoTexture.colorSpace = THREE.SRGBColorSpace;
+    logoTexture.anisotropy = 8;
+  }
+  return logoTexture;
+}
+// Largura padrão da logo (metros) e onde fica, em UV. u por metro: tronco 0.63, manga 0.33; v por metro: tronco 0.526, manga 0.91.
+const SPOTS = {
+  chest: { u: 0.15, v: 0.69, width: 0.17, uPerM: 0.63, vPerM: 0.526, flip: false },
+  back: { u: 0.45, v: 0.70, width: 0.26, uPerM: 0.63, vPerM: 0.526, flip: false },
+  sleeve: { u: 0.65, v: 0.86, width: 0.085, uPerM: 0.33, vPerM: 0.91, flip: false },
+};
+// No kimono o peito tem o decote em V: a logo do peito vai para o lado esquerdo, como um patch.
+const GI_CHEST = { u: 0.197, v: 0.655, width: 0.1, uPerM: 0.63, vPerM: 0.526, flip: false };
+function logoUniforms(cfg, color, name = "") {
+  const out = { centers: [], halves: [], on: [], flips: [] };
+  for (const k of ["chest", "back", "sleeve"]) {
+    const s = k === "chest" && /gi/.test(name) ? GI_CHEST : SPOTS[k], l = cfg.logo[k];
+    const w = s.width * l.size;
+    out.centers.push(new THREE.Vector2(s.u, s.v + l.y * 0.05));
+    out.halves.push(new THREE.Vector2((w * s.uPerM) / 2, ((w / LOGO_RATIO) * s.vPerM) / 2));
+    out.on.push(l.on ? 1 : 0);
+    out.flips.push(s.flip ? 1 : 0);
+  }
+  const c = new THREE.Color(color);
+  const light = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b > 0.55;
+  const tone = cfg.logo.tone === 'auto' ? (light ? 'blue' : 'white') : cfg.logo.tone;
+  out.tint = new THREE.Color(tone === 'blue' ? '#1f5ae0' : '#ffffff');
+  return out;
+}
+
+function uniformMaterial(name, cat, avatar) {
+  const cfg = avatar.config;
+  const color = cfg.colors[cat] || '#f2f2f2';
+  const m = new THREE.MeshStandardMaterial({ color, roughness: 0.86, metalness: 0, side: THREE.DoubleSide });
+  m.defines = { USE_UV: '' };
+  const lu = logoUniforms(cfg, color, name);
+  const u = {
+    logoMap: { value: logoMap() }, logoC: { value: lu.centers }, logoH: { value: lu.halves }, logoOn: { value: lu.on }, logoFlip: { value: lu.flips },
+    logoTint: { value: lu.tint }, beltColor: { value: new THREE.Color(BELT_COLORS[cfg.belt] || BELT_COLORS.Branca) }, weave: { value: /gi/.test(name) ? 1 : 0.4 },
+  };
+  m.userData.uniform = u;
+  m.userData.piece = name;
+  m.onBeforeCompile = (s) => {
+    Object.assign(s.uniforms, u);
+    s.fragmentShader = s.fragmentShader
+      .replace('#include <common>', `#include <common>
+        uniform sampler2D logoMap; uniform vec2 logoC[3]; uniform vec2 logoH[3]; uniform float logoOn[3]; uniform float logoFlip[3];
+        uniform vec3 logoTint; uniform vec3 beltColor; uniform float weave;`)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        // o glTF inverte o V do Blender: aqui v volta a crescer para cima (altura)
+        vec2 tuv = vec2(vUv.x, 1.0 - vUv.y);
+        vec3 tc = diffuseColor.rgb;
+        if (tuv.x > 0.85) tc = beltColor;
+        else if (tuv.x > 0.8) tc *= 0.86;
+        // trama do tecido (kimono mais marcada)
+        float tw = sin(tuv.x * 2600.0) * sin(tuv.y * 2200.0);
+        tc *= 1.0 + tw * 0.035 * weave;
+        for (int i = 0; i < 3; i++) {
+          if (logoOn[i] < 0.5) continue;
+          vec2 d = (tuv - logoC[i]) / (2.0 * logoH[i]) + 0.5;
+          if (d.x < 0.0 || d.x > 1.0 || d.y < 0.0 || d.y > 1.0) continue;
+          if (logoFlip[i] > 0.5) d.x = 1.0 - d.x;
+          float a = texture2D(logoMap, vec2(d.x, d.y)).a;
+          tc = mix(tc, logoTint, a);
+        }
+        diffuseColor.rgb = tc;`);
+  };
+  m.customProgramCacheKey = () => 'tutory-uniform';
+  return m;
+}
+
+// Atualiza cor, faixa e logo de uma peça TUTORY já vestida, sem recriar.
+function refreshUniform(mesh, cat, cfg) {
+  const u = mesh.material.userData.uniform;
+  if (!u) return;
+  const color = cfg.colors[cat] || '#f2f2f2';
+  mesh.material.color.set(color);
+  const lu = logoUniforms(cfg, color, mesh.material.userData.piece);
+  u.logoC.value = lu.centers; u.logoH.value = lu.halves; u.logoOn.value = lu.on; u.logoTint.value = lu.tint;
+  u.beltColor.value.set(BELT_COLORS[cfg.belt] || BELT_COLORS.Branca);
+}
+
+function partMaterial(std, cat, avatar, name = "") {
+  if (/^tutory_/.test(name)) return uniformMaterial(name, cat, avatar);
   const m = std.clone();
   if (cat === 'hair' || cat === 'beard') return hairMaterial(std, avatar.config.colors.hair || '#3a2416');
   if (cat === 'glasses') { m.transparent = true; m.depthWrite = false; return m; }
@@ -303,7 +424,8 @@ export class Avatar {
       const part = this.parts.get(cat);
       if (part) {
         for (const m of part.meshes) {
-          if (cat === 'hair' || cat === 'beard') m.material.color.set(cfg.colors.hair || '#3a2416');
+          if (m.material.userData.uniform) refreshUniform(m, cat, cfg);
+          else if (cat === 'hair' || cat === 'beard') m.material.color.set(cfg.colors.hair || '#3a2416');
           else if (cfg.colors[cat]) m.material.color.set(cfg.colors[cat]);
         }
       }
@@ -320,6 +442,7 @@ export class Avatar {
     }
     this.updateMask();
     this.group.visible = true;
+    if (first || JSON.stringify(prev.acc) !== JSON.stringify(cfg.acc) || (this.accObjs?.length && JSON.stringify(prev.morph) !== JSON.stringify(cfg.morph))) this.attachAccessories();
     if (first || JSON.stringify(prev.racket) !== JSON.stringify(cfg.racket)) this.attachRacket();
     if (first || prev.medal !== cfg.medal) this.attachMedal();
     if (first) this.play(cfg.pose || 'Idle', { fade: 0 });
@@ -333,7 +456,7 @@ export class Avatar {
     const meshes = [];
     gltf.scene.traverse((src) => {
       if (!src.isSkinnedMesh) return;
-      const m = new THREE.SkinnedMesh(src.geometry, partMaterial(src.material, cat, this));
+      const m = new THREE.SkinnedMesh(src.geometry, partMaterial(src.material, cat, this, name));
       m.name = src.name;
       // a malha nova não herda os nomes dos morphs (o GLTFLoader os põe na malha original): sem isso a roupa
       // e o cabelo ignoravam peso, músculo e medidas, e o corpo atravessava o tecido
@@ -471,6 +594,23 @@ export class Avatar {
       this.group.add(racket);
       hand.attach(racket);
       this.racket = racket;
+    });
+  }
+
+  // Acessórios montados na pose de repouso, com os morphs aplicados, e presos ao osso (seguem a animação).
+  attachAccessories() {
+    (this.accObjs || []).forEach((o) => { o.removeFromParent(); o.traverse((x) => { x.geometry?.dispose(); x.material?.dispose?.(); }); });
+    this.accObjs = [];
+    if (!Object.values(this.config.acc).some((v) => v && !METAL_KEYS.has(v))) return;
+    this.atRest(() => {
+      for (const [o, boneName] of buildAccessories(this, this.config.acc, logoMap())) {
+        const bone = this.bone(boneName);
+        if (!bone) continue;
+        this.group.add(o);
+        o.updateMatrixWorld(true);
+        bone.attach(o);
+        this.accObjs.push(o);
+      }
     });
   }
 

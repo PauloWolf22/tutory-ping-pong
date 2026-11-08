@@ -161,128 +161,146 @@
     "bitA": 0
    },
    {
+    "name": "tutory_gi_f",
+    "label": "Kimono de jiu-jitsu",
+    "size": 2245048,
+    "bitA": 1
+   },
+   {
     "name": "female_casualsuit01",
     "label": "Casual 1",
     "size": 1511280,
-    "bitA": 1
+    "bitA": 2
    },
    {
     "name": "female_casualsuit02",
     "label": "Casual 2",
     "size": 2105680,
-    "bitA": 2
+    "bitA": 3
    },
    {
     "name": "female_elegantsuit01",
     "label": "Elegante",
     "size": 1627472,
-    "bitA": 3
+    "bitA": 4
    },
    {
     "name": "toigo_female_suit",
     "label": "Terninho",
     "size": 7383872,
-    "bitA": 4
+    "bitA": 5
    },
    {
     "name": "toigo_female_double-breasted_suit",
     "label": "Terninho trespassado",
     "size": 3894220,
-    "bitA": 5
+    "bitA": 6
    },
    {
     "name": "toigo_halter_dress_knee_length",
     "label": "Vestido frente única",
     "size": 1543368,
-    "bitA": 6
+    "bitA": 7
    },
    {
     "name": "toigo_shift_dress",
     "label": "Vestido reto",
     "size": 4345688,
-    "bitA": 7
+    "bitA": 8
    },
    {
     "name": "toigo_cut_out_dress",
     "label": "Vestido recortado",
     "size": 2422912,
-    "bitA": 8
+    "bitA": 9
    },
    {
     "name": "toigo_dress_with_tiered_skirt",
     "label": "Vestido em camadas",
     "size": 6565840,
-    "bitA": 9
+    "bitA": 10
    },
    {
     "name": "aethelraed_flapper_dress",
     "label": "Vestido melindrosa",
     "size": 4123180,
-    "bitA": 10
+    "bitA": 11
    },
    {
     "name": "mindfront_kimono",
-    "label": "Quimono",
+    "label": "Robe quimono",
     "size": 3125832,
-    "bitA": 11
+    "bitA": 12
    }
   ],
   "top": [
    {
+    "name": "tutory_jersey_f",
+    "label": "Camisa esportiva TUTORY",
+    "size": 1160468,
+    "bitA": 13
+   },
+   {
     "name": "joepal_crude_t-shirt_female",
     "label": "Camiseta",
     "size": 725044,
-    "bitA": 12
+    "bitA": 14
    },
    {
     "name": "namuhekam_male_polo_shirt",
     "label": "Polo",
     "size": 1381608,
-    "bitA": 13
+    "bitA": 15
    },
    {
     "name": "toigo_camisole_top",
     "label": "Regata",
     "size": 2860708,
-    "bitA": 14
+    "bitA": 16
    },
    {
     "name": "toigo_fisherman_sweater",
     "label": "Suéter",
     "size": 1610088,
-    "bitA": 15
+    "bitA": 17
    }
   ],
   "bottom": [
    {
+    "name": "tutory_shorts_f",
+    "label": "Bermuda esportiva",
+    "size": 266232,
+    "bitA": 18
+   },
+   {
     "name": "cortu_cargo_pants",
     "label": "Calça cargo",
     "size": 262088,
-    "bitA": 16
+    "bitA": 19
    },
    {
     "name": "cortu_jeans_shorts",
     "label": "Bermuda jeans",
     "size": 330360,
-    "bitA": 17
+    "bitA": 20
    },
    {
     "name": "toigo_wool_pants",
     "label": "Calça social",
     "size": 943976,
-    "bitA": 18
+    "bitA": 21
    },
    {
     "name": "frankyaye_mini_skirt_01",
     "label": "Minissaia",
     "size": 711116,
-    "bitA": 19
+    "bitA": 22
    },
    {
     "name": "toigo_long_full_skirt",
     "label": "Saia longa",
     "size": 2096780,
-    "bitA": 20
+    "bitA": 23
    }
   ],
   "shoes": [
