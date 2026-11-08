@@ -273,7 +273,9 @@ begin
   if jsonb_typeof(p_avatar) is distinct from 'object' or octet_length(p_avatar::text) > 30000 then
     return jsonb_build_object('error', 'Dados do avatar inválidos.');
   end if;
-  update public.profiles set avatar = p_avatar where id = auth.uid();
+  -- a faixa do kimono é a graduação validada pelo administrador, nunca a escolhida no editor
+  update public.profiles p set avatar = jsonb_set(p_avatar, '{belt}', to_jsonb(case when p.belt_verified and p.belt is not null then p.belt else 'Branca' end))
+  where p.id = auth.uid();
   if not found then return jsonb_build_object('error', 'Complete seu perfil antes do avatar.'); end if;
   perform private.sports_bump();
   return jsonb_build_object('ok', true);
@@ -554,7 +556,10 @@ begin
   end if;
   perform set_config('app.actor', 'administrador', true);
   if not private.valid_belt(private.clean(p_belt, 20)) then return jsonb_build_object('error', 'Faixa inválida.'); end if;
-  update public.profiles set belt = private.clean(p_belt, 20), belt_verified = coalesce(p_verified, false) and p_belt is not null where id = p_id;
+  update public.profiles set belt = private.clean(p_belt, 20), belt_verified = coalesce(p_verified, false) and p_belt is not null,
+    -- o kimono do avatar passa a usar a faixa validada na hora
+    avatar = case when avatar is null then null else jsonb_set(avatar, '{belt}', to_jsonb(case when coalesce(p_verified, false) and private.clean(p_belt, 20) is not null then private.clean(p_belt, 20) else 'Branca' end)) end
+    where id = p_id;
   if not found then return jsonb_build_object('error', 'Conta não encontrada.'); end if;
   perform private.sports_bump();
   return jsonb_build_object('ok', true);

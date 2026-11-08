@@ -77,17 +77,17 @@ HAIR = [('short01', 'Curto 1'), ('short02', 'Curto 2'), ('short03', 'Curto 3'), 
         ('afro01', 'Black'), ('elvs_micky_afro', 'Black curto'), ('elvs_braided_rows', 'Nagô'), ('punkduck_alpha7_curly', 'Cachos longos'),
         ('long01', 'Longo'), ('punkduck_alpha7_long', 'Longo liso'), ('elvs_wavy_bob', 'Chanel ondulado'), ('bob01', 'Chanel 1'), ('bob02', 'Chanel 2'), ('ponytail01', 'Rabo de cavalo'), ('braid01', 'Trança')]
 if MALE:
-    FULL = [('male_casualsuit04', 'Camiseta e jeans'), ('male_casualsuit01', 'Casual 1'), ('male_casualsuit02', 'Casual 2'), ('male_casualsuit03', 'Casual 3'), ('male_casualsuit05', 'Casual 4'), ('male_casualsuit06', 'Casual 5'),
+    FULL = [('male_casualsuit04', 'Camiseta e jeans'), ('tutory_gi', 'Kimono de jiu-jitsu'), ('male_casualsuit01', 'Casual 1'), ('male_casualsuit02', 'Casual 2'), ('male_casualsuit03', 'Casual 3'), ('male_casualsuit05', 'Casual 4'), ('male_casualsuit06', 'Casual 5'),
             ('male_elegantsuit01', 'Elegante'), ('male_worksuit01', 'Trabalho'), ('toigo_male_suit_3', 'Terno'), ('toigo_male_double-breasted_suit', 'Terno trespassado'), ('toigo_male_suit_tie_and_jacket', 'Terno e gravata')]
-    TOPS = [('elvs_crude_t-shirt_male', 'Camiseta'), ('namuhekam_male_polo_shirt', 'Polo'), ('toigo_basic_tucked_t-shirt', 'Camiseta justa'), ('toigo_fisherman_sweater', 'Suéter')]
-    BOTTOMS = [('cortu_cargo_pants', 'Calça cargo'), ('cortu_jeans_shorts', 'Bermuda jeans'), ('toigo_wool_pants', 'Calça social')]
+    TOPS = [('tutory_jersey', 'Camisa esportiva TUTORY'), ('elvs_crude_t-shirt_male', 'Camiseta'), ('namuhekam_male_polo_shirt', 'Polo'), ('toigo_basic_tucked_t-shirt', 'Camiseta justa'), ('toigo_fisherman_sweater', 'Suéter')]
+    BOTTOMS = [('tutory_shorts', 'Bermuda esportiva'), ('cortu_cargo_pants', 'Calça cargo'), ('cortu_jeans_shorts', 'Bermuda jeans'), ('toigo_wool_pants', 'Calça social')]
     SHOES = [('shoes01', 'Tênis 1'), ('shoes02', 'Tênis 2'), ('shoes03', 'Calçado 3'), ('shoes04', 'Calçado 4'), ('shoes05', 'Calçado 5'), ('shoes06', 'Calçado 6'), ('toigo_ankle_boots_male', 'Bota curta')]
     BEARDS = [('wdg_scruffy_beard', 'Barba rala'), ('elvs_scruffy_beard1', 'Barba por fazer'), ('grinsegold_full_beard', 'Barba cheia'), ('rehmanpolanski_beard_viking', 'Barba longa'), ('grinsegold_moustache', 'Bigode'), ('rehmanpolanski_moustache_viking', 'Bigode longo')]
 else:
-    FULL = [('female_sportsuit01', 'Esportivo'), ('female_casualsuit01', 'Casual 1'), ('female_casualsuit02', 'Casual 2'), ('female_elegantsuit01', 'Elegante'), ('toigo_female_suit', 'Terninho'), ('toigo_female_double-breasted_suit', 'Terninho trespassado'),
-            ('toigo_halter_dress_knee_length', 'Vestido frente única'), ('toigo_shift_dress', 'Vestido reto'), ('toigo_cut_out_dress', 'Vestido recortado'), ('toigo_dress_with_tiered_skirt', 'Vestido em camadas'), ('aethelraed_flapper_dress', 'Vestido melindrosa'), ('mindfront_kimono', 'Quimono')]
-    TOPS = [('joepal_crude_t-shirt_female', 'Camiseta'), ('namuhekam_male_polo_shirt', 'Polo'), ('toigo_camisole_top', 'Regata'), ('toigo_fisherman_sweater', 'Suéter')]
-    BOTTOMS = [('cortu_cargo_pants', 'Calça cargo'), ('cortu_jeans_shorts', 'Bermuda jeans'), ('toigo_wool_pants', 'Calça social'), ('frankyaye_mini_skirt_01', 'Minissaia'), ('toigo_long_full_skirt', 'Saia longa')]
+    FULL = [('female_sportsuit01', 'Esportivo'), ('tutory_gi_f', 'Kimono de jiu-jitsu'), ('female_casualsuit01', 'Casual 1'), ('female_casualsuit02', 'Casual 2'), ('female_elegantsuit01', 'Elegante'), ('toigo_female_suit', 'Terninho'), ('toigo_female_double-breasted_suit', 'Terninho trespassado'),
+            ('toigo_halter_dress_knee_length', 'Vestido frente única'), ('toigo_shift_dress', 'Vestido reto'), ('toigo_cut_out_dress', 'Vestido recortado'), ('toigo_dress_with_tiered_skirt', 'Vestido em camadas'), ('aethelraed_flapper_dress', 'Vestido melindrosa'), ('mindfront_kimono', 'Robe quimono')]
+    TOPS = [('tutory_jersey_f', 'Camisa esportiva TUTORY'), ('joepal_crude_t-shirt_female', 'Camiseta'), ('namuhekam_male_polo_shirt', 'Polo'), ('toigo_camisole_top', 'Regata'), ('toigo_fisherman_sweater', 'Suéter')]
+    BOTTOMS = [('tutory_shorts_f', 'Bermuda esportiva'), ('cortu_cargo_pants', 'Calça cargo'), ('cortu_jeans_shorts', 'Bermuda jeans'), ('toigo_wool_pants', 'Calça social'), ('frankyaye_mini_skirt_01', 'Minissaia'), ('toigo_long_full_skirt', 'Saia longa')]
     SHOES = [('shoes03', 'Calçado 1'), ('shoes01', 'Tênis 1'), ('shoes02', 'Tênis 2'), ('shoes04', 'Calçado 2'), ('shoes05', 'Calçado 3'), ('shoes06', 'Calçado 4'), ('toigo_ankle_boots_female', 'Bota curta'), ('toigo_ballet_flats', 'Sapatilha de balé')]
     BEARDS = []
 GLASSES = [('kwnet_at_optical_glasses', 'Grau'), ('frankyaye_glasses_library_male', 'Redondo'), ('spamrakuen_sagerfrogs_glasses_01', 'Armação fina')]
@@ -301,10 +301,15 @@ from mathutils.bvhtree import BVHTree
 COVER_SHAPES = ['', 'body_heavy', 'body_muscle', 'body_thin', 'shoulders_wide', 'chest_big', 'belly_big', 'hips_wide', 'arms_thick', 'legs_thick']
 body_group = human.vertex_groups['body'].index
 # cabeça, pescoço e mãos ficam de fora: gola e punho não podem abrir buraco no rosto ou na mão
-skip_groups = {g.index for g in human.vertex_groups if g.name.lower().startswith(('head', 'neck', 'hand', 'thumb', 'index', 'middle', 'ring', 'pinky'))}
+skip_groups = {g.index for g in human.vertex_groups if g.name.lower().startswith(('head', 'hand', 'thumb', 'index', 'middle', 'ring', 'pinky'))}
+# pescoço: só a coluna (perto do eixo do osso, acima da base); trapézio e costas altas são cobertos normalmente
+neck_base = rig.matrix_world @ rig.data.bones['neck_01'].head_local
 def skipped_vertex(v):
     w = {g.group: g.weight for g in v.groups}
-    return sum(x for gi, x in w.items() if gi in skip_groups) > 0.35
+    if sum(x for gi, x in w.items() if gi in skip_groups) > 0.35:
+        return True
+    p = human.matrix_world @ v.co
+    return ((p.x - neck_base.x) ** 2 + (p.y - neck_base.y) ** 2) ** 0.5 < 0.066 and p.z > neck_base.z - 0.03
 body_verts = [v.index for v in human.data.vertices if any(g.group == body_group for g in v.groups) and not skipped_vertex(v)]
 
 
@@ -327,6 +332,9 @@ shapes = {n: body_shape(n) for n in COVER_SHAPES if n == '' or n in morph_coords
 cover_counts = {}
 for cat in ('full', 'top', 'bottom', 'shoes'):
     for item in catalog[cat]:
+        # peças TUTORY já trazem a pele exata que cobrem (grupo de exclusão gravado no .mhclo)
+        if item['name'].startswith('tutory_'):
+            continue
         obj = item['obj']
         polys = [tuple(p.vertices) for p in obj.data.polygons]
         covered = set()

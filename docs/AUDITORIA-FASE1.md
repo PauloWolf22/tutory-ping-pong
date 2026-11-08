@@ -180,3 +180,26 @@ Tudo em `supabase/sports.sql`, que pode ser rodado de novo sem perder dados. **R
 - O corpo base passou de 6,9 MB para 9,1 MB (68 morphs), e `app/assets/humans` foi para cerca de 231 MB. O app baixa só o corpo e as peças em uso.
 - Não testado em celular real nem com poses fora das prontas (Rebatida, Pulo, Derrota).
 - As roupas são as do pacote do MakeHuman: uniformes, kimono, acessórios novos e a logo TUTORY entram na próxima etapa da fase 4, como peças modeladas no Blender.
+
+## Fase 4, parte 2: peças TUTORY, logo, faixa, acessórios e miniaturas (08/11/2026)
+- **Peças próprias** (`tools/build_custom_clothes.py`): kimono de jiu-jitsu, camisa esportiva e bermuda, para o corpo masculino e o feminino.
+  - O kimono tem casaco com lapela e decote em V, saia do casaco, calça e faixa, tudo numa malha só.
+  - Cada peça é modelada a partir do corpo do MakeHuman (tronco, braços e os "ajudantes" de saia e calça) e gravada como roupa do MPFB (.mhclo).
+  - Com isso, as peças passam pelo mesmo ajuste das outras: acompanham cada medida do corpo e o esqueleto, e escondem a pele por baixo.
+- **Logo TUTORY** (arquivo oficial `assets/brand/logo-branco.png`):
+  - Aplicada pelo shader em regiões da textura, sem distorção, mantendo a proporção do arquivo.
+  - Posições: peito, costas e manga, cada uma com liga/desliga, tamanho (50 a 160%) e altura.
+  - Cor automática: azul em tecido claro e branca em tecido escuro. Também dá para fixar branca ou azul.
+- **Kimono branco, azul ou preto** (cor livre). A **faixa segue a graduação validada pelo administrador**:
+  - O editor não escolhe a faixa.
+  - O banco grava a faixa validada ao salvar o avatar (`sp_save_my_avatar`).
+  - Quando o administrador valida ou corrige a faixa (`sp_admin_set_belt`), o kimono do avatar já passa a usá-la.
+  - Sem validação, a faixa é branca.
+- **Acessórios** (`three/accessories.js`):
+  - Brincos (ponto, argola, argola grande); piercing (nariz em argola ou ponto, lábio, sobrancelha); corrente fina, corrente grossa e colar com pingente; pulseira simples, dupla ou de tecido; relógio esportivo ou clássico; boné TUTORY (com a logo), boné de aba reta e boné com aba para trás; óculos escuros aviador, esportivo e redondo.
+  - Metal dourado, prateado ou preto.
+  - A posição de cada um vem da malha do próprio avatar já com os morphs (orelha, nariz, boca, olhos, pescoço, punho, topo da cabeça), e o acessório fica preso ao osso.
+  - O boné substitui o chapéu e os óculos escuros substituem os óculos do catálogo.
+- **Miniaturas** no editor (Roupas e Cabelo): uma foto do próprio avatar com cada opção. São geradas uma a uma e é possível ligar e desligar.
+
+**Banco:** `supabase/sports.sql` mudou (faixa no avatar). Rode de novo antes de publicar.

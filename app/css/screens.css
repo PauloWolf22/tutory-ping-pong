@@ -705,3 +705,10 @@ a.bk-card:hover { border-color: var(--beam); }
   .rank-row.gen > :nth-child(4) { display: block; grid-column: 2 / -1; }
   .audit-list li { grid-template-columns: 1fr; gap: 2px; }
 }
+.logo-spot { display: grid; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+.thumb { display: grid; gap: 3px; padding: 4px; border-radius: 12px; border: 1px solid var(--line); background: rgba(3, 6, 14, 0.4); color: var(--muted); font-size: 11px; cursor: pointer; text-align: center; }
+.thumb.on { border-color: var(--beam); color: #fff; background: rgba(59, 123, 245, 0.18); }
+.thumb-img { display: block; width: 100%; aspect-ratio: 1; border-radius: 9px; object-fit: cover; background: #0d1a33; }
+.thumb-img.loading { animation: pulse 1.2s ease-in-out infinite; }
+.thumbs-toggle { margin: 0 0 8px; font-size: 13px; color: var(--muted); }

@@ -161,110 +161,128 @@
     "bitA": 0
    },
    {
+    "name": "tutory_gi",
+    "label": "Kimono de jiu-jitsu",
+    "size": 2387072,
+    "bitA": 1
+   },
+   {
     "name": "male_casualsuit01",
     "label": "Casual 1",
     "size": 5404124,
-    "bitA": 1
+    "bitA": 2
    },
    {
     "name": "male_casualsuit02",
     "label": "Casual 2",
     "size": 1530552,
-    "bitA": 2
+    "bitA": 3
    },
    {
     "name": "male_casualsuit03",
     "label": "Casual 3",
     "size": 1931028,
-    "bitA": 3
+    "bitA": 4
    },
    {
     "name": "male_casualsuit05",
     "label": "Casual 4",
     "size": 2292092,
-    "bitA": 4
+    "bitA": 5
    },
    {
     "name": "male_casualsuit06",
     "label": "Casual 5",
     "size": 2543200,
-    "bitA": 5
+    "bitA": 6
    },
    {
     "name": "male_elegantsuit01",
     "label": "Elegante",
     "size": 5142472,
-    "bitA": 6
+    "bitA": 7
    },
    {
     "name": "male_worksuit01",
     "label": "Trabalho",
     "size": 2551656,
-    "bitA": 7
+    "bitA": 8
    },
    {
     "name": "toigo_male_suit_3",
     "label": "Terno",
     "size": 5867292,
-    "bitA": 8
+    "bitA": 9
    },
    {
     "name": "toigo_male_double-breasted_suit",
     "label": "Terno trespassado",
     "size": 3859460,
-    "bitA": 9
+    "bitA": 10
    },
    {
     "name": "toigo_male_suit_tie_and_jacket",
     "label": "Terno e gravata",
     "size": 7844604,
-    "bitA": 10
+    "bitA": 11
    }
   ],
   "top": [
    {
+    "name": "tutory_jersey",
+    "label": "Camisa esportiva TUTORY",
+    "size": 1173516,
+    "bitA": 12
+   },
+   {
     "name": "elvs_crude_t-shirt_male",
     "label": "Camiseta",
     "size": 666044,
-    "bitA": 11
+    "bitA": 13
    },
    {
     "name": "namuhekam_male_polo_shirt",
     "label": "Polo",
     "size": 1370852,
-    "bitA": 12
+    "bitA": 14
    },
    {
     "name": "toigo_basic_tucked_t-shirt",
     "label": "Camiseta justa",
     "size": 964708,
-    "bitA": 13
+    "bitA": 15
    },
    {
     "name": "toigo_fisherman_sweater",
     "label": "Suéter",
     "size": 1614696,
-    "bitA": 14
+    "bitA": 16
    }
   ],
   "bottom": [
    {
+    "name": "tutory_shorts",
+    "label": "Bermuda esportiva",
+    "size": 337548,
+    "bitA": 17
+   },
+   {
     "name": "cortu_cargo_pants",
     "label": "Calça cargo",
     "size": 260072,
-    "bitA": 15
+    "bitA": 18
    },
    {
     "name": "cortu_jeans_shorts",
     "label": "Bermuda jeans",
     "size": 329452,
-    "bitA": 16
+    "bitA": 19
    },
    {
     "name": "toigo_wool_pants",
     "label": "Calça social",
     "size": 943360,
-    "bitA": 17
+    "bitA": 20
    }
   ],
   "shoes": [

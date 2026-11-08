@@ -1,9 +1,10 @@
 import { html, useState, useEffect, useRef, store, useDoc, useStage, toast, playerById, avatarOf, handleError, setLeaveGuard } from './lib.js';
 import { EditorStage } from '../three/stage.js';
+import { ACCESSORIES, METALS } from '../three/accessories.js';
 import { sports } from '../core/sports.js';
 import { useSports } from './sports.js';
 import {
-  loadGender, normalizeAvatar, avatarFromName, dressed, BODY_TYPES, BODY_TYPE_KEYS, portrait, webglAvailable, GENDERS, SKINS, HAIR_COLORS, CLOTH_COLORS, CATEGORIES, OPTIONAL, SLIDERS, RACKETS, POSES,
+  loadGender, normalizeAvatar, normalizeLogo, portraitReady, LOGO_SPOTS, avatarFromName, dressed, BODY_TYPES, BODY_TYPE_KEYS, portrait, webglAvailable, GENDERS, SKINS, HAIR_COLORS, CLOTH_COLORS, CATEGORIES, OPTIONAL, SLIDERS, RACKETS, POSES,
 } from '../three/avatars.js';
 
 const TABS = [['base', 'Base'], ['face', 'Rosto'], ['body', 'Corpo'], ['clothes', 'Roupas'], ['hair', 'Cabelo'], ['extras', 'Acessórios'], ['pose', 'Pose']];
@@ -11,6 +12,38 @@ const FACE_GROUPS = ['Rosto', 'Testa', 'Olhos e sobrancelhas', 'Nariz e boca', '
 const BODY_GROUPS = ['Corpo', 'Proporções', 'Braços e pernas', 'Traços de origem'];
 
 const Group = ({ title, hint, children }) => html`<section class="ed-group"><h4>${title}</h4>${hint && html`<p class="muted hint">${hint}</p>`}${children}</section>`;
+
+const partsWith = (parts, cat, id) => {
+  const p = { ...parts, [cat]: id };
+  if (cat === "full") { delete p.top; delete p.bottom; }
+  if (cat === "top" || cat === "bottom") delete p.full;
+  return p;
+};
+// Miniaturas: foto do próprio avatar com cada opção (geradas uma a uma, guardadas na memória da página).
+function ThumbOptions({ items, value, onChange, cat, draft, kind, none }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      for (const [id] of items) {
+        if (!live) return;
+        const cfg = { ...draft, parts: partsWith(draft.parts, cat, id), pose: "Idle", thumb: null };
+        if (portraitReady(cfg, { kind, size: 160 })) continue;
+        await portrait(cfg, { kind, size: 160 }).catch(() => null);
+        if (live) tick((x) => x + 1);
+      }
+    })();
+    return () => { live = false; };
+  }, [cat, draft.gender, draft.skin, JSON.stringify(draft.morph), items.length]);
+  return html`<div class="thumbs">
+    ${none && html`<button class=${"thumb " + (!value ? "on" : "")} onClick=${() => onChange(null)}><span class="thumb-img empty"></span><span>${none}</span></button>`}
+    ${items.map(([id, label]) => {
+      const src = portraitReady({ ...draft, parts: partsWith(draft.parts, cat, id), pose: "Idle", thumb: null }, { kind, size: 160 });
+      return html`<button key=${id} class=${"thumb " + (value === id ? "on" : "")} onClick=${() => onChange(id)} title=${label}>
+        ${src ? html`<img class="thumb-img" src=${src} alt="" />` : html`<span class="thumb-img loading"></span>`}<span>${label}</span></button>`;
+    })}
+  </div>`;
+}
 
 function Options({ items, value, onChange, none }) {
   return html`<div class="options">
@@ -32,6 +65,22 @@ function Slider({ label, neg, pos, morph, onChange, k = 1 }) {
   const value = ((morph[pos] || 0) - (neg ? morph[neg] || 0 : 0)) / k;
   return html`<label class="ed-slider"><span>${label}</span>
     <input type="range" min=${neg ? -1 : 0} max="1" step="0.02" value=${value} onInput=${(e) => onChange(neg, pos, +e.target.value * k)} /></label>`;
+}
+
+// Logo TUTORY nas peças próprias: onde aparece, tamanho, altura e cor. A proporção do arquivo oficial é mantida.
+function LogoControls({ draft, belt, ownAccount, onChange }) {
+  const logo = normalizeLogo(draft.logo);
+  const set = (spot, p) => onChange({ ...logo, [spot]: { ...logo[spot], ...p } });
+  const gi = /^tutory_gi/.test(draft.parts.full || "");
+  return html`<${Group} title="Logo TUTORY" hint="Arquivo oficial da marca, sem distorção. Ajuste tamanho e altura em cada posição.">
+    ${Object.entries(LOGO_SPOTS).map(([k, label]) => html`<div key=${k} class="logo-spot">
+      <label class="check"><input type="checkbox" checked=${logo[k].on} onChange=${(e) => set(k, { on: e.target.checked })} /> ${label}</label>
+      ${logo[k].on && html`<label class="ed-slider"><span>Tamanho</span><input type="range" min="0.5" max="1.6" step="0.05" value=${logo[k].size} onInput=${(e) => set(k, { size: +e.target.value })} /></label>
+        <label class="ed-slider"><span>Altura</span><input type="range" min="-1" max="1" step="0.05" value=${logo[k].y} onInput=${(e) => set(k, { y: +e.target.value })} /></label>`}
+    </div>`)}
+    <${Options} items=${[["auto", "Cor automática"], ["white", "Branca"], ["blue", "Azul"]]} value=${logo.tone} onChange=${(tone) => onChange({ ...logo, tone })} />
+    ${gi && html`<p class="notice">Faixa: <strong>${belt.toLowerCase()}</strong>. ${ownAccount ? "A faixa segue a graduação validada pelo administrador." : "Entre com sua conta: a faixa segue a graduação validada pelo administrador."}</p>`}
+  <//>`;
 }
 
 export function EditorPage({ id, account = false }) {
@@ -60,7 +109,10 @@ export function EditorPage({ id, account = false }) {
   const [status, setStatus] = useState(null); // 'ok' | 'error' | null
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(true);
+  const [thumbs, setThumbs] = useState(false);
   const [host, stage] = useStage((el) => new EditorStage(el));
+  // faixa do kimono: a graduação validada pelo administrador (o banco confere de novo ao salvar)
+  const beltNow = ownAccount && s.profile?.belt_verified && s.profile.belt ? s.profile.belt : "Branca";
   const keyOf = (a) => JSON.stringify({ ...a, thumb: null, provisional: false });
   const dirty = keyOf(draft) !== keyOf(saved);
 
@@ -68,11 +120,11 @@ export function EditorPage({ id, account = false }) {
   useEffect(() => {
     let live = true;
     setLoading(true);
-    const job = stage.current?.setAvatar(draft, draft.pose);
+    const job = stage.current?.setAvatar({ ...draft, belt: beltNow }, draft.pose);
     if (!job) setLoading(false);
     else job.then(() => live && setLoading(false)).catch((e) => { if (live) setLoading(false); handleError(e); });
     return () => { live = false; };
-  }, [keyOf(draft)]);
+  }, [keyOf(draft), beltNow]);
   // Protege contra perder alterações: fechar a aba ou trocar de tela pede confirmação.
   useEffect(() => {
     if (!dirty || saving) return undefined;
@@ -91,7 +143,16 @@ export function EditorPage({ id, account = false }) {
     const parts = { ...d.parts, [cat]: name };
     if (cat === "full" && name) { delete parts.top; delete parts.bottom; }
     if ((cat === "top" || cat === "bottom") && name) delete parts.full;
-    return { ...d, parts: dressed(parts, d.gender), provisional: false };
+    const acc = { ...(d.acc || {}) };
+    if (cat === "hat" && name) acc.cap = null;
+    if (cat === "glasses" && name) acc.sunglasses = null;
+    return { ...d, parts: dressed(parts, d.gender), acc, provisional: false };
+  });
+  const setAcc = (k, v) => setDraft((d) => {
+    const parts = { ...d.parts };
+    if (k === "cap" && v) delete parts.hat;
+    if (k === "sunglasses" && v) delete parts.glasses;
+    return { ...d, parts, acc: { ...(d.acc || {}), [k]: v }, provisional: false };
   });
   const setBodyType = (k) => setDraft((d) => {
     const morph = Object.fromEntries(Object.entries(d.morph).filter(([n]) => !BODY_TYPE_KEYS.has(n)));
@@ -114,8 +175,8 @@ export function EditorPage({ id, account = false }) {
     setSaving(true);
     setStatus(null);
     try {
-      const thumb = await portrait({ ...draft, thumb: null }, { fresh: true, size: 256 }).catch(() => null);
-      const final = { ...draft, thumb, provisional: false };
+      const thumb = await portrait({ ...draft, belt: beltNow, thumb: null }, { fresh: true, size: 256 }).catch(() => null);
+      const final = { ...draft, belt: beltNow, thumb, provisional: false };
       if (ownAccount) await sports.saveAvatar(final);
       else await store.saveAvatar(player.id, final, code);
       setSaved(final);
@@ -149,6 +210,7 @@ export function EditorPage({ id, account = false }) {
         ${TABS.map(([k, label]) => html`<button key=${k} role="tab" aria-selected=${tab === k} class=${tab === k ? 'on' : ''} onClick=${() => { setTab(k); stage.current?.focus(k === 'face' || k === 'hair' ? 'face' : k === 'clothes' || k === 'body' || k === 'pose' ? 'body' : 'bust'); }}>${label}</button>`)}
       </div>
       <div class="ed-body">
+        ${meta && (tab === "clothes" || tab === "hair") && webglAvailable() && html`<label class="check thumbs-toggle"><input type="checkbox" checked=${thumbs} onChange=${(e) => setThumbs(e.target.checked)} /> Mostrar miniaturas</label>`}
         ${!meta && html`<div class="skeleton" style="height:240px;border-radius:16px"></div>`}
         ${meta && tab === 'base' && html`
           ${draft.provisional && html`<p class="notice">Este é um avatar provisório, sorteado pelo nome. Monte o seu e salve.</p>`}
@@ -164,16 +226,19 @@ export function EditorPage({ id, account = false }) {
         <//>`}
         ${meta && tab === "body" && morphGroups(BODY_GROUPS)}
         ${meta && tab === 'clothes' && ['full', 'top', 'bottom', 'shoes'].map((cat) => html`<${Group} key=${cat} title=${CATEGORIES.find((c) => c[0] === cat)[1]}>
-          <${Options} none=${null} items=${items(cat)} value=${draft.parts[cat] || null} onChange=${(v) => setPart(cat, v)} />
+          ${thumbs ? html`<${ThumbOptions} cat=${cat} kind="full" draft=${draft} items=${items(cat)} value=${draft.parts[cat] || null} onChange=${(v) => setPart(cat, v)} />` : html`<${Options} none=${null} items=${items(cat)} value=${draft.parts[cat] || null} onChange=${(v) => setPart(cat, v)} />`}
           ${draft.parts[cat] && html`<${Swatches} label=${'Cor de ' + cat} colors=${CLOTH_COLORS} value=${draft.colors[cat]} onChange=${(c) => setColor(cat, c)} none="Cor original" />`}
         <//>`)}
+        ${meta && tab === 'clothes' && Object.values(draft.parts).some((p) => /^tutory_/.test(p || '')) && html`<${LogoControls} draft=${draft} belt=${beltNow} ownAccount=${ownAccount} onChange=${(logo) => setDraft((d) => ({ ...d, logo, provisional: false }))} />`}
         ${meta && tab === 'hair' && html`
-          <${Group} title="Cabelo"><${Options} none="Careca" items=${items('hair')} value=${draft.parts.hair || null} onChange=${(v) => setPart('hair', v)} /><//>
+          <${Group} title="Cabelo">${thumbs ? html`<${ThumbOptions} cat="hair" kind="bust" none="Careca" draft=${draft} items=${items('hair')} value=${draft.parts.hair || null} onChange=${(v) => setPart('hair', v)} />` : html`<${Options} none="Careca" items=${items('hair')} value=${draft.parts.hair || null} onChange=${(v) => setPart('hair', v)} />`}<//>
           <${Group} title="Cor do cabelo, barba e sobrancelha"><${Swatches} label="Cor do cabelo" colors=${HAIR_COLORS} value=${draft.colors.hair} onChange=${(c) => setColor('hair', c)} /><//>
           ${items('beard').length > 0 && html`<${Group} title="Barba e bigode"><${Options} none="Sem barba" items=${items('beard')} value=${draft.parts.beard || null} onChange=${(v) => setPart('beard', v)} /><//>`}`}
         ${meta && tab === 'extras' && html`
           <${Group} title="Óculos"><${Options} none="Sem óculos" items=${items('glasses')} value=${draft.parts.glasses || null} onChange=${(v) => setPart('glasses', v)} /><//>
           <${Group} title="Chapéus"><${Options} none="Sem chapéu" items=${items('hat')} value=${draft.parts.hat || null} onChange=${(v) => setPart('hat', v)} /><//>
+          ${Object.entries(ACCESSORIES).map(([k, def]) => html`<${Group} key=${k} title=${def.label}><${Options} none="Nenhum" items=${Object.entries(def.items)} value=${draft.acc?.[k] || null} onChange=${(v) => setAcc(k, v)} /><//>`)}
+          <${Group} title="Metal das joias e armações"><${Options} items=${Object.entries(METALS)} value=${draft.acc?.metal || "silver"} onChange=${(v) => setAcc("metal", v)} /><//>
           <${Group} title="Raquete"><${Options} items=${Object.entries(RACKETS)} value=${draft.racket.style} onChange=${(v) => patch({ racket: { ...draft.racket, style: v } })} />
             <${Swatches} label="Cor da borracha" colors=${['#c0262d', '#0040c8', '#1f8a55', '#a23f96', '#15171c']} value=${draft.racket.color} onChange=${(c) => patch({ racket: { ...draft.racket, color: c } })} /><//>`}
         ${meta && tab === 'pose' && html`

@@ -141,7 +141,7 @@ await test('Avatar salvo na conta volta igual depois de sair e entrar', async ()
   await sports.signOut();
   eq(sports.profile, null);
   await sports.signIn('caio@x.com', 'segredo1');
-  eq(sports.profile.avatar, av);
+  eq(sports.profile.avatar, { ...av, belt: 'Branca' }, 'faixa sem validação é branca');
   eq(sports.people.get(ids.caio).avatar.parts.hair, 'afro01', 'cache das contas');
 });
 await test('Jogador do campeonato ligado à conta mostra o avatar da conta', async () => {
@@ -200,6 +200,10 @@ await test('Faixa: só entra no ranking por faixa depois de validada; trocar a f
   await sports.saveProfile({ name: 'Caio Reis', gender: 'm', belt: 'Roxa' });
   eq((await db.ranking('jiujitsu', null, 'Roxa')).length, 0, 'nova faixa espera validação');
   await sports.admin((d, t) => d.adminSetBelt(t, ids.caio, 'Roxa', true));
+  eq(db._p.get(ids.caio).avatar.belt, 'Roxa', 'kimono do avatar segue a faixa validada');
+  await sports.signIn('caio@x.com', 'segredo1');
+  await sports.saveAvatar({ ...db._p.get(ids.caio).avatar, belt: 'Preta' });
+  eq(db._p.get(ids.caio).avatar.belt, 'Roxa', 'o editor não escolhe a faixa');
 });
 await test('Counter-Strike por equipe: cada integrante pontua; mesma pessoa nas duas equipes recusada', async () => {
   for (const [k, n] of [['dani', 'Dani Alves'], ['edu', 'Edu Melo']]) await account(k, n, 'm');

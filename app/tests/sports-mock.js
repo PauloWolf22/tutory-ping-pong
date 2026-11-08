@@ -129,7 +129,7 @@ export function createMockSportsDb({ adminToken = 'tok' } = {}) {
       const p = this._p.get(this.current.id);
       if (!p) err('Complete seu perfil antes do avatar.');
       if (JSON.stringify(a).length > 30000) err('Dados do avatar inválidos.');
-      p.avatar = structuredClone(a);
+      p.avatar = { ...structuredClone(a), belt: p.belt_verified && p.belt ? p.belt : 'Branca' };
       this.bump();
       return { ok: true };
     },
@@ -246,6 +246,7 @@ export function createMockSportsDb({ adminToken = 'tok' } = {}) {
       const before = { ...p, avatar: undefined };
       p.belt = b;
       p.belt_verified = !!verified && !!b;
+      if (p.avatar) p.avatar = { ...p.avatar, belt: p.belt_verified ? b : 'Branca' };
       this.audit('profiles', 'update', before, { ...p, avatar: undefined });
       this.bump();
       return { ok: true };
