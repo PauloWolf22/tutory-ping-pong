@@ -30,13 +30,15 @@ export function ChampionShow({ t, big = false, exit = true }) {
       <span class="overline gold">Campanha</span>
       <ol class="ch-camp">${campaign.map((m) => {
         const opp = playerById(t, m.p.find((x) => x !== champion.id));
-        return html`<li key=${m.id}><small>${t.bracket.rounds[m.round].short}</small><span>${m.bye ? 'BYE' : displayName(opp)}</span><b>${m.bye ? '' : E.scoreText(t, m)}</b></li>`;
+        return html`<li key=${m.id}><small>${E.roundOf(t, m).short}</small><span>${m.bye ? 'BYE' : displayName(opp)}</span><b>${m.bye ? '' : E.scoreText(t, m)}</b></li>`;
       })}</ol>
     </aside>
     <aside class="ch-panel glass right">
       <span class="overline gold">O torneio</span>
       <dl class="ch-stats">
         <div><dt>Vice-campeão</dt><dd>${vice?.name}</dd></div>
+        ${stats.third && html`<div><dt>3º lugar</dt><dd>${stats.third.name}</dd></div>`}
+        ${stats.consolation && html`<div><dt>Campeão da repescagem</dt><dd>${stats.consolation.name}</dd></div>`}
         <div><dt>Participantes</dt><dd>${stats.totalPlayers}</dd></div>
         <div><dt>Partidas</dt><dd>${stats.finished}</dd></div>
         <div><dt>Vitórias do campeão</dt><dd>${row.wins}</dd></div>

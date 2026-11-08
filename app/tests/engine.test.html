@@ -19,6 +19,7 @@ function seeded(seed) { let s = seed; return (n) => { s = (s * 1664525 + 1013904
 function make(n, oddMode = 'byes') {
   const t = E.newTournament();
   t.settings.oddMode = oddMode;
+  t.settings.thirdPlace = false; // estes testes cobrem a árvore pura; 3º lugar e repescagem estão em phase6.test.html
   for (let i = 0; i < n; i++) E.addPlayer(t, { name: `Jogador ${i + 1}` });
   return t;
 }
@@ -52,7 +53,7 @@ for (const n of [2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 16, 17, 32]) {
       eq(E.computeStats(t).ranking[0].player.id, E.champion(t).id, 'ranking');
       eq(E.computeStats(t).pending, 0, 'pendentes');
       const elim = t.players.filter((p) => E.playerStatus(t, p.id).key === 'out');
-      eq(elim.length, n - 2, 'eliminados');
+      eq(elim.length, n === 3 ? 0 : n - 2, 'eliminados (com 3, o perdedor da semifinal é o 3º lugar)');
     });
   }
 }

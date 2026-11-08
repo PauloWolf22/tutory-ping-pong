@@ -5,11 +5,12 @@ export class UserError extends Error {}
 const fail = (message) => { throw new UserError(message); };
 
 export const SCHEMA = 1;
-export const PLAYED = new Set(['live', 'done', 'wo']);
+export const PLAYED = new Set(['live', 'paused', 'done', 'wo']);
 export const STATUS_LABEL = {
-  waiting: 'Aguardando', next: 'Próxima partida', live: 'Em andamento', done: 'Finalizada',
+  waiting: 'Aguardando', next: 'Próxima partida', live: 'Em andamento', paused: 'Pausada', done: 'Finalizada',
   postponed: 'Adiada', wo: 'WO', bye: 'BYE',
 };
+const IN_PLAY = new Set(['live', 'paused']);
 
 export const uid = (prefix = 'id') => {
   const b = new Uint8Array(6);
@@ -37,7 +38,8 @@ export function newTournament() {
       prizes: '', notes: '', custom: [], log: [],
     },
     scoring: { bestOf: 3, points: 11, winBy: 2, cap: 0 },
-    settings: { oddMode: 'byes', sound: true },
+    // thirdPlace: os perdedores das semifinais disputam o 3º lugar. consolation: repescagem dos eliminados na 1ª rodada.
+    settings: { oddMode: 'byes', sound: true, thirdPlace: true, consolation: false },
     players: [],
     draw: { status: 'idle', mode: 'auto', slots: [], order: [], cursor: 0, size: 0, last: null, history: [] },
     bracket: null,
@@ -308,9 +310,10 @@ export function buildBracket(t, slots, oddMode) {
       };
     }
   });
-  t.bracket = { size, players: n, oddMode, rounds: rounds.map(({ index, name, short, matches: ids }) => ({ index, name, short, matches: ids })), createdAt: Date.now() };
+  t.bracket = { size, players: n, oddMode, rounds: rounds.map(({ index, name, short, matches: ids }) => ({ index, name, short, matches: ids })), extra: [], createdAt: Date.now() };
   t.matches = matches;
   t.nextMatchId = null;
+  buildExtras(t, slots);
   // primeira rodada: BYE avança sozinho, sem depender de resultado manual
   rounds[0].matches.forEach((id, i) => {
     const m = matches[id];
@@ -324,8 +327,58 @@ export function buildBracket(t, slots, oddMode) {
     }
   });
   let number = 1;
-  for (const r of t.bracket.rounds) for (const id of r.matches) if (!matches[id].bye) matches[id].number = number++;
+  for (const m of orderedMatches(t)) if (!m.bye) m.number = number++;
 }
+
+const blankMatch = (id, extra) => ({
+  id, round: extra.round, index: extra.index, stage: extra.stage, p: [null, null], status: 'waiting', games: [], live: [0, 0], manual: null,
+  winner: null, loser: null, wo: false, bye: false, number: 0, startedAt: null, endedAt: null, next: extra.next || null,
+});
+
+// Partidas fora da árvore principal (a árvore continua igual, para a chave desenhada não mudar):
+//  - disputa de 3º lugar: os dois perdedores das semifinais;
+//  - repescagem: os perdedores de cada partida real da 1ª rodada, numa chave de consolação própria.
+// Cada uma entra em t.bracket.extra com `after` = rodada principal depois da qual ela é jogada.
+function buildExtras(t, slots) {
+  const main = t.bracket.rounds, L = main.length, n = t.bracket.players;
+  if (t.settings.thirdPlace && L >= 2 && n >= 4) {
+    t.bracket.extra.push({ key: 'third', kind: 'third', name: 'Disputa de 3º lugar', short: '3º LUGAR', after: L - 2, matches: ['t3'] });
+    t.matches.t3 = blankMatch('t3', { round: 0, index: 0, stage: 'third' });
+    main[L - 2].matches.forEach((id, i) => { t.matches[id].loserNext = { id: 't3', slot: i }; });
+  }
+  // com só semifinal e final, quem perde na 1ª rodada já disputa o 3º lugar: não há repescagem
+  if (!t.settings.consolation || L < 3) return;
+  const real0 = main[0].matches.filter((id, i) => slots[i * 2] !== 'BYE' && slots[i * 2 + 1] !== 'BYE');
+  if (real0.length < 2) return;
+  const S = nextPow2(real0.length), R = Math.log2(S);
+  const names = (r) => (r === R - 1 ? ['Final da repescagem', 'REP · FINAL'] : r === R - 2 ? ['Semifinal da repescagem', 'REP · SEMI'] : [`Repescagem · ${r + 1}ª rodada`, `REP · ${r + 1}ª`]);
+  for (let r = 0; r < R; r++) {
+    const key = 'cons-' + r;
+    const ids = [];
+    for (let i = 0; i < S >> (r + 1); i++) {
+      const id = `c${r}-${i}`;
+      ids.push(id);
+      t.matches[id] = blankMatch(id, { round: r, index: i, stage: key, next: r < R - 1 ? { id: `c${r + 1}-${i >> 1}`, slot: i & 1 } : null });
+    }
+    const [name, short] = names(r);
+    t.bracket.extra.push({ key, kind: 'consolation', name, short, after: Math.min(r, L - 2), matches: ids });
+  }
+  // cada partida da 1ª rodada manda o perdedor para uma vaga; as vagas vazias viram BYE, nunca BYE contra BYE
+  const filled = new Set();
+  real0.forEach((id, j) => {
+    const pos = j < S / 2 ? 2 * j : 2 * (j - S / 2) + 1;
+    filled.add(pos);
+    t.matches[id].loserNext = { id: `c0-${pos >> 1}`, slot: pos & 1 };
+  });
+  for (let i = 0; i < S / 2; i++) {
+    if (filled.has(2 * i) && filled.has(2 * i + 1)) continue;
+    Object.assign(t.matches[`c0-${i}`], { bye: true, status: 'bye' });
+  }
+}
+
+export const extraRound = (t, key) => t.bracket?.extra?.find((e) => e.key === key) || null;
+// Fase de uma partida (nome e sigla), da árvore principal ou das extras.
+export const roundOf = (t, m) => (m.stage ? extraRound(t, m.stage) : t.bracket.rounds[m.round]);
 
 // ------------------------------------------------------------------ pontuação
 export const gamesToWin = (s) => Math.floor(s.bestOf / 2) + 1;
@@ -384,17 +437,24 @@ function clearResult(m) {
   m.startedAt = null;
   m.endedAt = null;
   m.status = 'waiting';
+  m.log = [];
+  m.lastPoint = null;
 }
 
-// Sincroniza o vencedor com a partida seguinte. Se o ocupante mudou, tudo que dependia dele é refeito em cascata.
-function propagate(t, m) {
-  if (!m.next) return;
-  const nx = t.matches[m.next.id];
-  const incoming = m.winner || null;
-  if (nx.p[m.next.slot] === incoming) return;
-  nx.p[m.next.slot] = incoming;
-  const hadResult = nx.winner || nx.games.length || nx.manual || nx.status === 'live' || nx.live[0] || nx.live[1];
-  if (hadResult) {
+const hasResult = (m) => !!(m.winner || m.games.length || m.manual || IN_PLAY.has(m.status) || m.live[0] || m.live[1]);
+
+// Coloca alguém numa vaga de outra partida. Se o ocupante mudou, o que dependia dele é refeito em cascata.
+function setSlot(t, ref, incoming) {
+  const nx = t.matches[ref.id];
+  if (!nx || nx.p[ref.slot] === incoming) return;
+  nx.p[ref.slot] = incoming;
+  if (nx.bye) {
+    // vaga sem adversário (repescagem): quem chega avança sozinho
+    nx.winner = nx.p[0] || nx.p[1] || null;
+    propagate(t, nx);
+    return;
+  }
+  if (hasResult(nx)) {
     clearResult(nx);
     audit(t, 'correction', `Jogo ${nx.number} foi reiniciado porque um participante mudou.`);
   }
@@ -402,20 +462,40 @@ function propagate(t, m) {
   propagate(t, nx);
 }
 
-// Partidas já disputadas que seriam reiniciadas se o vencedor desta mudasse. Usado na confirmação de correção.
+// Vencedor segue na chave; perdedor vai para o 3º lugar ou para a repescagem, quando houver.
+function propagate(t, m) {
+  if (m.next) setSlot(t, m.next, m.winner || null);
+  if (m.loserNext) setSlot(t, m.loserNext, m.bye ? null : m.loser || null);
+}
+
+// Partidas já disputadas que seriam reiniciadas se o vencedor desta mudasse (simulado numa cópia).
 export function correctionImpact(t, id, newWinnerSide) {
   const m = getMatch(t, id);
   const newWinner = newWinnerSide == null ? null : m.p[newWinnerSide];
   if (m.winner === newWinner) return [];
-  const out = [];
-  let cur = m;
-  while (cur.next) {
-    const nx = t.matches[cur.next.id];
-    if (nx.winner || nx.games.length || nx.manual || nx.status === 'live') out.push(nx);
-    if (!nx.winner) break;
-    cur = nx;
-  }
-  return out;
+  const c = structuredClone(t);
+  const cm = c.matches[id];
+  if (newWinner == null) clearResult(cm);
+  else { cm.winner = newWinner; cm.loser = cm.p[1 - newWinnerSide]; }
+  propagate(c, cm);
+  return orderedMatches(t).filter((x) => x.id !== id && hasResult(x) && !hasResult(c.matches[x.id]));
+}
+
+// ------------------------------------------------------------------ formato de cada confronto
+// Cada partida pode ter a própria regra (melhor de 1, 3 ou 5, pontos, vantagem); sem ela, vale a do campeonato.
+export const scoringOf = (t, m) => (m && m.scoring) || t.scoring;
+
+export function setMatchScoring(t, id, s) {
+  const m = getMatch(t, id);
+  if (isFinished(m) || hasResult(m)) fail('O formato só muda antes do primeiro ponto. Remova o resultado para mudar.');
+  if (!s) { delete m.scoring; audit(t, 'scoring', `Jogo ${m.number}: volta à pontuação do campeonato.`); return; }
+  const next = { bestOf: Number(s.bestOf), points: Number(s.points), winBy: Number(s.winBy), cap: Number(s.cap) || 0 };
+  if (![1, 3, 5, 7].includes(next.bestOf)) fail('Melhor de 1, 3, 5 ou 7 games.');
+  if (!Number.isInteger(next.points) || next.points < 1 || next.points > 99) fail('Pontos por game entre 1 e 99.');
+  if (![1, 2, 3].includes(next.winBy)) fail('Vantagem mínima de 1, 2 ou 3 pontos.');
+  if (next.cap && next.cap < next.points) fail('O limite de pontos não pode ser menor que os pontos do game.');
+  m.scoring = next;
+  audit(t, 'scoring', `Jogo ${m.number}: ${scoringDescription(next)}.`);
 }
 
 function conclude(t, m, side, patch) {
@@ -442,7 +522,7 @@ export function scoreText(t, m) {
 
 export function saveGames(t, id, games) {
   const m = getMatch(t, id);
-  conclude(t, m, validateGames(games, t.scoring), { games, manual: null, wo: false });
+  conclude(t, m, validateGames(games, scoringOf(t, m)), { games, manual: null, wo: false });
 }
 
 export function saveManual(t, id, a, b) {
@@ -470,9 +550,47 @@ export function startMatch(t, id) {
   const m = getMatch(t, id);
   if (!isReady(m)) fail('Esta partida ainda não tem os dois jogadores definidos.');
   if (isFinished(m)) fail('Esta partida já terminou. Use a correção de resultado.');
+  if (m.status === 'paused') fail('A partida está pausada. Use "Retomar".');
   m.status = 'live';
   m.startedAt = m.startedAt || Date.now();
+  if (!Array.isArray(m.log)) m.log = [];
   if (t.nextMatchId === id) t.nextMatchId = null;
+}
+
+// Pausa (atendimento, intervalo, problema na mesa): o placar fica como está e ninguém marca ponto até retomar.
+export function pauseMatch(t, id) {
+  const m = getMatch(t, id);
+  if (m.status !== 'live') fail('Só uma partida em andamento pode ser pausada.');
+  m.status = 'paused';
+  m.pausedAt = Date.now();
+  (m.log ||= []).push({ kind: 'pause', at: m.pausedAt, score: [...m.live], game: m.games.length + 1 });
+}
+
+export function resumeMatch(t, id) {
+  const m = getMatch(t, id);
+  if (m.status !== 'paused') fail('A partida não está pausada.');
+  m.status = 'live';
+  m.pausedAt = null;
+  (m.log ||= []).push({ kind: 'resume', at: Date.now(), score: [...m.live], game: m.games.length + 1 });
+}
+
+// Corrige o placar do game em andamento (ex.: um ponto marcado para o lado errado várias jogadas atrás).
+export function correctLive(t, id, a, b) {
+  const m = getMatch(t, id);
+  if (!IN_PLAY.has(m.status)) fail('A partida não está em andamento.');
+  if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0) fail('Use apenas números inteiros no placar.');
+  const s = scoringOf(t, m);
+  if (pendingWinner(t, m) !== null) fail('A partida já está decidida. Desfaça o último ponto ou confirme o resultado.');
+  const closes = gameIsOver(a, b, s);
+  if (closes) validateGame(a, b, s); // valida antes de mexer: correção recusada não deixa rastro
+  m.live = [a, b];
+  (m.log ||= []).push({ kind: 'fix', at: Date.now(), score: [a, b], game: m.games.length + 1 });
+  if (closes) {
+    m.games.push([a, b]);
+    m.live = [0, 0];
+  }
+  m.lastPoint = null;
+  audit(t, 'correction', `Jogo ${m.number}: placar do game corrigido para ${a} x ${b}.`);
 }
 
 export function postponeMatch(t, id) {
@@ -492,11 +610,15 @@ export function setNextMatch(t, id) {
 // Marca um ponto. Quando o game fecha, ele entra em `games`; a partida só encerra na confirmação do administrador.
 export function addPoint(t, id, side) {
   const m = getMatch(t, id);
+  if (m.status === 'paused') fail('A partida está pausada. Retome para marcar pontos.');
   if (m.status !== 'live') startMatch(t, id);
   if (pendingWinner(t, m) !== null) fail('A partida já está decidida. Confirme o resultado ou desfaça o último ponto.');
   m.live[side]++;
   m.lastPoint = { side, at: Date.now() };
-  if (gameIsOver(m.live[0], m.live[1], t.scoring)) {
+  // histórico de pontuação: cada ponto com o placar que ficou (aparece na partida e no telão)
+  (m.log ||= []).push({ kind: 'point', side, at: m.lastPoint.at, score: [...m.live], game: m.games.length + 1 });
+  if (m.log.length > 400) m.log.splice(0, m.log.length - 400);
+  if (gameIsOver(m.live[0], m.live[1], scoringOf(t, m))) {
     m.games.push([...m.live]);
     m.live = [0, 0];
   }
@@ -504,7 +626,10 @@ export function addPoint(t, id, side) {
 
 export function undoPoint(t, id) {
   const m = getMatch(t, id);
+  if (m.status === 'paused') fail('A partida está pausada. Retome para desfazer pontos.');
   if (m.status !== 'live') fail('A partida não está em andamento.');
+  const lastPointIdx = (m.log || []).map((e) => e.kind).lastIndexOf('point');
+  if (lastPointIdx >= 0) m.log.splice(lastPointIdx, 1);
   if (m.live[0] === 0 && m.live[1] === 0) {
     if (!m.games.length) fail('Não há pontos para desfazer.');
     m.live = m.games.pop();
@@ -517,7 +642,8 @@ export function undoPoint(t, id) {
 }
 
 export function pendingWinner(t, m) {
-  const wins = gameWins(m, t.scoring), need = gamesToWin(t.scoring);
+  const s = scoringOf(t, m);
+  const wins = gameWins(m, s), need = gamesToWin(s);
   if (wins[0] >= need) return 0;
   if (wins[1] >= need) return 1;
   return null;
@@ -525,29 +651,29 @@ export function pendingWinner(t, m) {
 
 export function confirmLive(t, id) {
   const m = getMatch(t, id);
+  if (m.status === 'paused') fail('A partida está pausada. Retome antes de confirmar.');
   const side = pendingWinner(t, m);
   if (side === null) fail('A partida ainda não tem um vencedor.');
   conclude(t, m, side, { games: m.games, manual: null, wo: false });
 }
 
-// Próxima partida: escolha do administrador ou a primeira pronta da rodada mais antiga.
+// Próxima partida: escolha do administrador ou a primeira pronta na ordem de jogo.
 export function nextMatch(t) {
   if (t.nextMatchId && t.matches[t.nextMatchId]) return t.matches[t.nextMatchId];
   if (!t.bracket) return null;
-  for (const r of t.bracket.rounds) {
-    for (const id of r.matches) {
-      const m = t.matches[id];
-      if (isReady(m) && m.status === 'waiting') return m;
-    }
-  }
-  return null;
+  return orderedMatches(t).find((m) => isReady(m) && m.status === 'waiting') || null;
 }
 
-export const liveMatches = (t) => orderedMatches(t).filter((m) => m.status === 'live');
+// Em quadra: em andamento ou pausada (o placar continua no ar).
+export const liveMatches = (t) => orderedMatches(t).filter((m) => IN_PLAY.has(m.status));
 
+// Ordem de jogo: rodadas da árvore principal, com a repescagem e o 3º lugar intercalados, e a final por último.
 export function orderedMatches(t) {
   if (!t.bracket) return [];
-  return t.bracket.rounds.flatMap((r) => r.matches.map((id) => t.matches[id]));
+  const main = t.bracket.rounds, L = main.length;
+  const blocks = main.map((r, ri) => ({ key: ri === L - 1 ? 1e6 : ri * 2, ids: r.matches }));
+  for (const e of t.bracket.extra || []) blocks.push({ key: e.after * 2 + 1 + (e.kind === 'third' ? 0.5 : 0), ids: e.matches });
+  return blocks.sort((a, b) => a.key - b.key).flatMap((b) => b.ids.map((id) => t.matches[id]).filter(Boolean));
 }
 
 export function realMatches(t) { return orderedMatches(t).filter((m) => !m.bye); }
@@ -567,19 +693,41 @@ export function finalMatch(t) {
   return t.matches[r.matches[0]];
 }
 
+const playerOf = (t, id) => (id ? t.players.find((p) => p.id === id) || null : null);
+
 export function champion(t) {
   const f = finalMatch(t);
-  return f && f.winner ? t.players.find((p) => p.id === f.winner) || null : null;
+  return f && f.winner ? playerOf(t, f.winner) : null;
 }
 
 export function viceChampion(t) {
   const f = finalMatch(t);
-  return f && f.loser ? t.players.find((p) => p.id === f.loser) || null : null;
+  return f && f.loser ? playerOf(t, f.loser) : null;
+}
+
+// 3º lugar: vencedor da disputa de 3º. Com 3 jogadores não há essa partida: o perdedor da única semifinal real é o 3º.
+export function thirdPlace(t) {
+  if (!t.bracket) return null;
+  if (t.matches.t3) return playerOf(t, t.matches.t3.winner);
+  const L = t.bracket.rounds.length;
+  if (t.bracket.players !== 3 || L < 2) return null;
+  const semi = t.bracket.rounds[L - 2].matches.map((id) => t.matches[id]).find((x) => !x.bye);
+  return playerOf(t, semi?.loser);
+}
+
+export function fourthPlace(t) {
+  return playerOf(t, t.matches?.t3?.loser);
+}
+
+export function consolationChampion(t) {
+  const cons = (t.bracket?.extra || []).filter((e) => e.kind === 'consolation');
+  if (!cons.length) return null;
+  return playerOf(t, t.matches[cons[cons.length - 1].matches[0]]?.winner);
 }
 
 export function tournamentStatus(t) {
-  if (champion(t)) return { key: 'finished', label: 'Encerrado' };
-  if (isLocked(t)) return { key: 'running', label: 'Em andamento' };
+  if (champion(t) && realMatches(t).every(isFinished)) return { key: 'finished', label: 'Encerrado' };
+  if (isLocked(t)) return { key: 'running', label: champion(t) ? 'Final decidida' : 'Em andamento' };
   if (t.draw.status === 'live') return { key: 'draw', label: 'Sorteio ao vivo' };
   if (t.draw.status === 'done') return { key: 'ready', label: 'Chave definida' };
   return { key: 'open', label: t.players.length ? 'Inscrições abertas' : 'Aguardando inscrições' };
@@ -589,9 +737,14 @@ export function tournamentStatus(t) {
 export function playerStatus(t, id) {
   if (champion(t)?.id === id) return { key: 'champion', label: 'Campeão' };
   if (viceChampion(t)?.id === id) return { key: 'vice', label: 'Vice-campeão' };
+  if (thirdPlace(t)?.id === id) return { key: 'third', label: '3º lugar' };
+  if (fourthPlace(t)?.id === id) return { key: 'fourth', label: '4º lugar' };
+  if (consolationChampion(t)?.id === id) return { key: 'cons', label: 'Campeão da repescagem' };
   const ms = orderedMatches(t).filter((m) => m.p.includes(id));
+  if (ms.some((m) => IN_PLAY.has(m.status))) return { key: 'live', label: 'Em quadra' };
+  // quem perdeu mas ainda tem jogo (3º lugar ou repescagem) continua na disputa
+  if (ms.some((m) => !m.bye && !isFinished(m))) return { key: 'in', label: ms.some((m) => m.loser === id) ? (ms.some((m) => !isFinished(m) && m.stage === 'third') ? 'Disputa o 3º lugar' : 'Na repescagem') : 'Na disputa' };
   if (ms.some((m) => m.loser === id)) return { key: 'out', label: 'Eliminado' };
-  if (ms.some((m) => m.status === 'live')) return { key: 'live', label: 'Em quadra' };
   if (ms.length) return { key: 'in', label: 'Na disputa' };
   if (t.players.find((p) => p.id === id)?.absent) return { key: 'absent', label: 'Fora deste sorteio' };
   if (t.draw.status === 'live' && t.draw.slots.includes(id)) return { key: 'drawn', label: 'Sorteado' };
@@ -605,7 +758,7 @@ function matchTotals(t, m) {
   // totais do ponto de vista dos lados [0, 1]
   const out = { points: [0, 0], games: [0, 0], hasPoints: false };
   if (m.manual) {
-    const need = gamesToWin(t.scoring);
+    const need = gamesToWin(scoringOf(t, m));
     if (Math.max(...m.manual) <= need) out.games = [...m.manual];
     else { out.points = [...m.manual]; out.hasPoints = true; out.games = m.manual[0] > m.manual[1] ? [1, 0] : [0, 1]; }
     return out;
@@ -630,7 +783,7 @@ export function computeStats(t) {
   for (const m of all) {
     m.p.forEach((id) => {
       const r = rows.get(id);
-      if (r) r.furthest = Math.max(r.furthest, m.round);
+      if (r && !m.stage) r.furthest = Math.max(r.furthest, m.round);
     });
     if (m.bye) {
       const r = rows.get(m.winner);
@@ -664,6 +817,8 @@ export function computeStats(t) {
   const ranking = [...rows.values()].sort((a, b) =>
     (b.status.key === 'champion') - (a.status.key === 'champion') ||
     (b.status.key === 'vice') - (a.status.key === 'vice') ||
+    (b.status.key === 'third') - (a.status.key === 'third') ||
+    (b.status.key === 'fourth') - (a.status.key === 'fourth') ||
     b.furthest - a.furthest || b.wins - a.wins ||
     (b.gamesFor - b.gamesAgainst) - (a.gamesFor - a.gamesAgainst) ||
     (b.pointsFor - b.pointsAgainst) - (a.pointsFor - a.pointsAgainst) ||
@@ -682,6 +837,9 @@ export function computeStats(t) {
     bestCampaign: by((r) => r.played ? (r.gamesFor - r.gamesAgainst) * 1000 + (r.pointsFor - r.pointsAgainst) + 1000000 * r.wins : 0),
     champion: champion(t),
     vice: viceChampion(t),
+    third: thirdPlace(t),
+    fourth: fourthPlace(t),
+    consolation: consolationChampion(t),
     finalRound,
   };
 }
@@ -722,6 +880,14 @@ export function updateScoring(t, patch) {
   t.scoring = s;
 }
 
+// 3º lugar e repescagem entram na chave quando ela é criada (fim do sorteio): mudam só antes disso.
+export function setBracketOptions(t, { thirdPlace, consolation }) {
+  if (t.bracket) fail('A chave já foi criada. Para mudar 3º lugar ou repescagem, refaça o sorteio antes das partidas.');
+  if (thirdPlace !== undefined) t.settings.thirdPlace = !!thirdPlace;
+  if (consolation !== undefined) t.settings.consolation = !!consolation;
+  audit(t, 'settings', `Chave: 3º lugar ${t.settings.thirdPlace ? 'sim' : 'não'}, repescagem ${t.settings.consolation ? 'sim' : 'não'}.`);
+}
+
 export function restartTournament(t) {
   t.draw = { status: 'idle', mode: 'auto', slots: [], order: [], cursor: 0, size: 0, last: null, history: t.draw.history };
   t.bracket = null;
@@ -751,7 +917,7 @@ export function toCSV(t) {
   const when = (x) => (x ? new Date(x).toLocaleString('pt-BR') : '');
   for (const m of orderedMatches(t)) {
     if (m.bye) continue;
-    lines.push([m.number, t.bracket.rounds[m.round].name, name(m.p[0]), name(m.p[1]), scoreText(t, m), name(m.winner), STATUS_LABEL[m.status], when(m.startedAt), when(m.endedAt)].map(q).join(';'));
+    lines.push([m.number, roundOf(t, m).name, name(m.p[0]), name(m.p[1]), scoreText(t, m), name(m.winner), STATUS_LABEL[m.status], when(m.startedAt), when(m.endedAt)].map(q).join(';'));
   }
   return '﻿' + lines.join('\r\n');
 }

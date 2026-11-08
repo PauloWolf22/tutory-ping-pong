@@ -12,9 +12,9 @@ export function heroPair(t) {
 
 export function Versus({ t, m, size = 72, label }) {
   const a = playerById(t, m.p[0]), b = playerById(t, m.p[1]);
-  const wins = E.gameWins(m, t.scoring);
+  const wins = E.gameWins(m, E.scoringOf(t, m));
   const score = (s) => (m.manual ? m.manual[s] : m.wo ? (m.winner === m.p[s] ? 'WO' : '–') : wins[s]);
-  const played = E.isFinished(m) || m.status === 'live';
+  const played = E.isFinished(m) || m.status === 'live' || m.status === 'paused';
   return html`<a class="vs-card" href=${'#/partida/' + m.id}>
     ${label && html`<span class="overline">${label}</span>`}
     <div class="vs-row">
@@ -22,7 +22,7 @@ export function Versus({ t, m, size = 72, label }) {
       ${played ? html`<div class="vs-score"><b>${score(0)}</b><i>x</i><b>${score(1)}</b></div>` : html`<div class="vs-mark">VS</div>`}
       <div class=${'vs-side ' + (m.loser === m.p[1] ? 'lost' : '')}><${Ava} player=${b} size=${size} state=${m.winner && m.winner === m.p[1] ? 'win' : ''} /><b>${displayName(b) || 'A definir'}</b></div>
     </div>
-    <span class="muted vs-meta">${t.bracket.rounds[m.round].name} · Jogo ${m.number}${m.games.length ? ' · ' + E.scoreText(t, m) : ''}</span>
+    <span class="muted vs-meta">${E.roundOf(t, m).name} · Jogo ${m.number}${m.games.length ? ' · ' + E.scoreText(t, m) : ''}</span>
   </a>`;
 }
 

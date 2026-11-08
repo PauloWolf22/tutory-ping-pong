@@ -251,3 +251,33 @@ Tudo em `supabase/sports.sql`, que pode ser rodado de novo sem perder dados. **R
 - **Testes de regressão:** motor 52, futebol 40, Store 13 e esportes 27, todos aprovados.
 - **App completo sobre banco simulado:** `mock.html`. Por ele foram feitos, na tela, cadastro, troca de formato, sorteio do feminino, novo evento, histórico, telão e celular de 375 px.
 - **Fica para a fase 6:** disputa de 3º lugar (o pódio mostra campeão e vice), repescagem e partidas ao vivo.
+
+## Fase 6: confrontos, 3º lugar, repescagem e partidas ao vivo (08/11/2026)
+- **Disputa de 3º lugar** (ligada por padrão; pode ser desligada antes do sorteio):
+  - Os perdedores das semifinais jogam antes da final. O resultado define o 3º e o 4º lugares.
+  - Com 3 jogadores não há essa partida: o perdedor da única semifinal fica em 3º.
+- **Repescagem** (desligada por padrão; o Paulo escolheu: eliminados da 1ª rodada):
+  - Quem perde o primeiro jogo entra numa chave de consolação própria e não volta à chave principal. Há o título "Campeão da repescagem".
+  - As vagas são distribuídas para nunca haver BYE contra BYE.
+  - Com só semifinal e final não existe repescagem, porque esses perdedores já disputam o 3º lugar.
+  - A ordem de jogo intercala tudo: 1ª rodada, repescagem, semifinais, final da repescagem, 3º lugar e, por último, a final.
+- **Formato de cada confronto:** melhor de 1, 3, 5 ou 7, pontos por game e vantagem. Muda antes do primeiro ponto; sem escolha, vale o do campeonato.
+- **Ao vivo:**
+  - Pausar e retomar. Pausada, a partida continua no ar com o placar, e ninguém marca ponto.
+  - Corrigir o placar do game.
+  - Histórico de pontuação, com cada ponto e o placar que ficou.
+  - Selo AO VIVO / PAUSADA no placar.
+  - O vencedor só avança quando o ADM confirma.
+- **Correções:** o aviso de "o que será reiniciado" passou a simular a mudança. Agora inclui o 3º lugar e a repescagem.
+- **Página "Ao vivo"** (`#/ao-vivo`): partidas em quadra de todas as categorias, mais a próxima de cada uma. Um botão **AO VIVO** aparece no topo só quando há partida em quadra.
+- **Pódio:** 3º lugar e campeão da repescagem aparecem em Campeonatos, na página do campeão e no status dos jogadores. O envio ao ranking leva o 3º lugar.
+- **Corrigido:** nos formulários de placar, digitar rápido nos dois campos podia perder o primeiro valor.
+- **Celular:** abaixo de 480 px, o topo esconde "Telão" (feito para a TV) e encurta "Painel ADM" para "ADM". Assim o botão AO VIVO cabe em 375 px.
+- **Testes:**
+  - `tests/phase6.test.html`, 49 testes:
+    - 3º lugar e repescagem com 3 a 20 jogadores, nos dois modos de chave;
+    - correções em cascata;
+    - formato por confronto;
+    - pausa, correção e histórico.
+  - Regressão: motor 52, categorias 11, futebol 40, Store 13 e esportes 27. Total de 192 testes, todos aprovados.
+  - Fluxo feito na tela, sobre banco simulado (`mock.html`).

@@ -399,7 +399,7 @@ function ChampionshipLink({ t, accounts, mods, run }) {
   const category = t.cat;
   const cats = Object.keys(t.comps);
   const key = (modality === 'pingpong' ? 'pp-' : modality + '-') + category + '-' + (t.bracket?.createdAt || 'sem-chave');
-  const plan = championshipImport(t, { modality, key, gameWins: E.gameWins, champion: E.champion(t), vice: E.viceChampion(t), category });
+  const plan = championshipImport(t, { modality, key, gameWins: E.gameWins, champion: E.champion(t), vice: E.viceChampion(t), third: E.thirdPlace(t), category });
   const fits = (a) => category === 'misto' || a.gender === category;
   const linked = t.players.filter((p) => p.userId).length;
   const places = plan.awards.filter((a) => a.place !== 'participacao').length;

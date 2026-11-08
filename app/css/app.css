@@ -166,3 +166,4 @@ select.input option { background: #0b1222; }
   .cat-switch { width: 100%; }
   .cat-tab { flex: 1; justify-content: center; padding: 10px 8px; letter-spacing: 0.12em; }
 }
+@media (max-width: 480px) { .hide-sm, .nav-right .tv-link { display: none; } .nav-right { gap: 6px; } }
