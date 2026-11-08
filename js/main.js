@@ -35,7 +35,7 @@ function Shell({ route, children }) {
       <div class="nav-right">
         <a class="btn sm" href="#/telao" target="_blank" rel="noopener">Telão</a>
         <a class=${'btn sm ' + (sports.user ? '' : 'primary')} href="#/conta">${sports.user ? (sports.profile?.nick || 'Minha conta') : 'Entrar'}</a>
-        ${store.admin && html`<a class="btn sm" href="#/admin">Painel</a>`}
+        <a class=${"btn sm adm-btn " + (store.admin ? "on" : "")} href="#/admin" title=${store.admin ? "Painel do administrador" : "Entrar como administrador"}>${store.admin ? "Painel ADM" : "ADM"}</a>
       </div>
     </header>
     ${store.mode === 'local' && html`<p class="local-bar" role="status">Versão online sem servidor: os dados ficam só neste aparelho. Outros celulares, computadores e TVs não veem este campeonato.</p>`}
