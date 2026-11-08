@@ -125,6 +125,7 @@ export function PlayersPage() {
     <div class="page-head">
       <div><span class="overline">${t.players.length} inscritos</span><h1>Quem entra em <em>quadra</em></h1>
         <p>Cada jogador tem nome, número e um personagem 3D próprio.</p></div>
+      ${!admin && html`<a class="btn" href="#/admin">Entrar como ADM para adicionar</a>`}
       ${admin && html`<div class="actions">
         <button class="btn" disabled=${!roster} onClick=${importList}>Importar lista</button>
         <button class="btn primary" disabled=${!roster} onClick=${add}>Adicionar participante</button>
