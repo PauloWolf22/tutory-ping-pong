@@ -203,8 +203,24 @@ export class EditorStage extends Stage {
     });
   }
 
+  // Frente, lado e costas: gira a câmera em volta do avatar mantendo distância e altura.
+  view(side) {
+    if (!this.ok) return;
+    const target = { front: 0.18, side: Math.PI / 2, back: Math.PI }[side] ?? 0.18;
+    const t = this.controls.target.clone();
+    const off = this.camera.position.clone().sub(t);
+    const r = Math.hypot(off.x, off.z), y = this.camera.position.y;
+    const from = Math.atan2(off.x, off.z);
+    let delta = target - from;
+    delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+    this.tween(0.6, (k) => {
+      const a = from + delta * k;
+      this.camera.position.set(t.x + r * Math.sin(a), y, t.z + r * Math.cos(a));
+    });
+  }
+
   setPose(name) {
-    const once = ['SwordSlash', 'Punch', 'Jump', 'PickUp', 'Roll', 'Victory', 'Defeat', 'SitDown'];
+    const once =['SwordSlash', 'Punch', 'Jump', 'PickUp', 'Roll', 'Victory', 'Defeat', 'SitDown'];
     if (!this.avatar) return;
     if (name === 'Defeat' || name === 'SitDown') this.avatar.play(name, { loop: false });
     else if (once.includes(name)) this.avatar.play(name, { loop: false, then: name === 'Victory' ? 'Victory' : this.avatar.config.pose === name ? 'Idle' : this.avatar.config.pose || 'Idle' });

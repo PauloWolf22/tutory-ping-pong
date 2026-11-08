@@ -27,8 +27,15 @@ export function skinMaterial(base) {
     sheen: 0.12, sheenRoughness: 0.75, sheenColor: new THREE.Color(0xffc9b0), envMapIntensity: 0.75,
   });
   m.onBeforeCompile = (s) => {
+    // camada básica: a área que toda roupa cobre vira tecido escuro (só aparece se nenhuma roupa estiver no lugar)
+    s.vertexShader = s.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float baseLayer;\nvarying float vBaseLayer;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBaseLayer = baseLayer;');
     s.fragmentShader = s.fragmentShader
-      .replace('#include <common>', `#include <common>\n${PORES}`)
+      .replace('#include <common>', `#include <common>\nvarying float vBaseLayer;\n${PORES}`)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        float ppCloth = smoothstep(0.35, 0.65, vBaseLayer);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.035, 0.05, 0.09), ppCloth);`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
         #ifdef USE_MAP
           roughnessFactor = clamp(roughnessFactor + (ppPores(vMapUv * ${SCALE}) - 0.55) * 0.12, 0.3, 0.85);

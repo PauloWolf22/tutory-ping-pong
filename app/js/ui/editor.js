@@ -1,14 +1,14 @@
-import { html, useState, useEffect, store, useDoc, useStage, toast, playerById, avatarOf, handleError, setLeaveGuard } from './lib.js';
+import { html, useState, useEffect, useRef, store, useDoc, useStage, toast, playerById, avatarOf, handleError, setLeaveGuard } from './lib.js';
 import { EditorStage } from '../three/stage.js';
 import { sports } from '../core/sports.js';
 import { useSports } from './sports.js';
 import {
-  loadGender, normalizeAvatar, avatarFromName, portrait, webglAvailable, GENDERS, SKINS, HAIR_COLORS, CLOTH_COLORS, CATEGORIES, OPTIONAL, SLIDERS, RACKETS, POSES,
+  loadGender, normalizeAvatar, avatarFromName, dressed, BODY_TYPES, BODY_TYPE_KEYS, portrait, webglAvailable, GENDERS, SKINS, HAIR_COLORS, CLOTH_COLORS, CATEGORIES, OPTIONAL, SLIDERS, RACKETS, POSES,
 } from '../three/avatars.js';
 
 const TABS = [['base', 'Base'], ['face', 'Rosto'], ['body', 'Corpo'], ['clothes', 'Roupas'], ['hair', 'Cabelo'], ['extras', 'Acessórios'], ['pose', 'Pose']];
-const FACE_GROUPS = ['Rosto', 'Olhos e sobrancelhas', 'Nariz e boca', 'Expressão'];
-const BODY_GROUPS = ['Corpo', 'Traços de origem'];
+const FACE_GROUPS = ['Rosto', 'Testa', 'Olhos e sobrancelhas', 'Nariz e boca', 'Expressão'];
+const BODY_GROUPS = ['Corpo', 'Proporções', 'Braços e pernas', 'Traços de origem'];
 
 const Group = ({ title, hint, children }) => html`<section class="ed-group"><h4>${title}</h4>${hint && html`<p class="muted hint">${hint}</p>`}${children}</section>`;
 
@@ -27,10 +27,11 @@ function Swatches({ colors, value, onChange, label, none }) {
   </div>`;
 }
 
-function Slider({ label, neg, pos, morph, onChange }) {
-  const value = (morph[pos] || 0) - (neg ? morph[neg] || 0 : 0);
+// k: alcance do controle (comprimentos usam parte do intervalo do modelo para não sair do natural)
+function Slider({ label, neg, pos, morph, onChange, k = 1 }) {
+  const value = ((morph[pos] || 0) - (neg ? morph[neg] || 0 : 0)) / k;
   return html`<label class="ed-slider"><span>${label}</span>
-    <input type="range" min=${neg ? -1.6 : 0} max="1.6" step="0.02" value=${value} onInput=${(e) => onChange(neg, pos, +e.target.value)} /></label>`;
+    <input type="range" min=${neg ? -1 : 0} max="1" step="0.02" value=${value} onInput=${(e) => onChange(neg, pos, +e.target.value * k)} /></label>`;
 }
 
 export function EditorPage({ id, account = false }) {
@@ -40,7 +41,19 @@ export function EditorPage({ id, account = false }) {
   // Quem está logado e é o dono deste jogador salva na própria conta, sem código.
   const ownAccount = account || (!!player?.userId && player.userId === s.user?.id);
   const [saved, setSaved] = useState(() => normalizeAvatar(player ? avatarOf(player) : {}));
-  const [draft, setDraft] = useState(saved);
+  const [draft, setDraftRaw] = useState(saved);
+  // histórico para "Desfazer": mudanças seguidas (arrastar um controle) viram um passo só
+  const hist = useRef({ list: [], at: 0 });
+  const [, bump] = useState(0);
+  const setDraft = (fn) => setDraftRaw((d) => {
+    const n = typeof fn === "function" ? fn(d) : fn;
+    if (JSON.stringify(n) === JSON.stringify(d)) return d;
+    const h = hist.current, now = Date.now();
+    if (now - h.at > 500) { h.list = [...h.list.slice(-39), d]; bump((x) => x + 1); }
+    h.at = now;
+    return n;
+  });
+  const undo = () => { const h = hist.current; const prev = h.list.pop(); h.at = 0; if (prev) setDraftRaw(prev); bump((x) => x + 1); };
   const [tab, setTab] = useState('base');
   const [meta, setMeta] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -73,11 +86,16 @@ export function EditorPage({ id, account = false }) {
   if (!player) return html`<main class="page"><div class="glass empty"><h3>Participante não encontrado</h3><a class="btn" href="#/jogadores">Ver participantes</a></div></main>`;
   const needsCode = !ownAccount && store.remote && !store.admin;
   const patch = (p) => setDraft((d) => ({ ...d, ...p, provisional: false }));
+  // roupa obrigatória: trocar para peças separadas completa a outra metade com a peça básica
   const setPart = (cat, name) => setDraft((d) => {
     const parts = { ...d.parts, [cat]: name };
-    if (cat === 'full' && name) { delete parts.top; delete parts.bottom; }
-    if ((cat === 'top' || cat === 'bottom') && name) delete parts.full;
-    return { ...d, parts, provisional: false };
+    if (cat === "full" && name) { delete parts.top; delete parts.bottom; }
+    if ((cat === "top" || cat === "bottom") && name) delete parts.full;
+    return { ...d, parts: dressed(parts, d.gender), provisional: false };
+  });
+  const setBodyType = (k) => setDraft((d) => {
+    const morph = Object.fromEntries(Object.entries(d.morph).filter(([n]) => !BODY_TYPE_KEYS.has(n)));
+    return { ...d, morph: { ...morph, ...BODY_TYPES[k].morph }, provisional: false };
   });
   const setColor = (k, c) => setDraft((d) => ({ ...d, colors: { ...d.colors, [k]: c }, provisional: false }));
   const setMorph = (neg, pos, v) => setDraft((d) => {
@@ -110,7 +128,7 @@ export function EditorPage({ id, account = false }) {
   const catalog = meta?.catalog || {};
   const items = (cat) => (catalog[cat] || []).map((x) => [x.name, x.label]);
   const morphGroups = (groups) => groups.map((g) => html`<${Group} key=${g} title=${g}>
-    ${SLIDERS[g].filter(([, , pos]) => meta?.morphs.includes(pos)).map(([label, neg, pos]) => html`<${Slider} key=${pos} label=${label} neg=${neg} pos=${pos} morph=${draft.morph} onChange=${setMorph} />`)}
+    ${SLIDERS[g].filter(([, , pos]) => meta?.morphs.includes(pos)).map(([label, neg, pos, k]) => html`<${Slider} key=${pos} label=${label} neg=${neg} pos=${pos} k=${k || 1} morph=${draft.morph} onChange=${setMorph} />`)}
   <//>`);
 
   return html`<main class="editor">
@@ -122,6 +140,8 @@ export function EditorPage({ id, account = false }) {
       <div class="ed-who"><span class="overline">Avatar de</span><h1>${player.name}</h1><p class="muted">Arraste para girar · role para aproximar · <a href="#/regulamento">créditos</a></p></div>
       <div class="ed-cams">
         ${[['face', 'Rosto'], ['bust', 'Busto'], ['body', 'Corpo']].map(([k, l]) => html`<button key=${k} class="btn sm" onClick=${() => stage.current?.focus(k)}>${l}</button>`)}
+        <span class="ed-cams-sep"></span>
+        ${[["front", "Frente"], ["side", "Lado"], ["back", "Costas"]].map(([k, l]) => html`<button key=${k} class="btn sm ghost" onClick=${() => stage.current?.view(k)}>${l}</button>`)}
       </div>
     </section>
     <aside class="ed-panel glass">
@@ -139,9 +159,12 @@ export function EditorPage({ id, account = false }) {
           <${Group} title="Altura"><label class="ed-slider"><span>${Math.round(draft.height * 175)} cm aprox.</span>
             <input type="range" min="0.9" max="1.1" step="0.005" value=${draft.height} onInput=${(e) => patch({ height: +e.target.value })} /></label><//>`}
         ${meta && tab === 'face' && morphGroups(FACE_GROUPS)}
-        ${meta && tab === 'body' && morphGroups(BODY_GROUPS)}
+        ${meta && tab === "body" && html`<${Group} title="Tipo de corpo" hint="Ponto de partida. Ajuste os detalhes nos controles abaixo; o esqueleto e as roupas acompanham.">
+          <${Options} items=${Object.entries(BODY_TYPES).map(([k, t]) => [k, t.label])} value=${Object.entries(BODY_TYPES).find(([, t]) => [...BODY_TYPE_KEYS].every((n) => (draft.morph[n] || 0) === (t.morph[n] || 0)))?.[0] || null} onChange=${setBodyType} />
+        <//>`}
+        ${meta && tab === "body" && morphGroups(BODY_GROUPS)}
         ${meta && tab === 'clothes' && ['full', 'top', 'bottom', 'shoes'].map((cat) => html`<${Group} key=${cat} title=${CATEGORIES.find((c) => c[0] === cat)[1]}>
-          <${Options} none=${OPTIONAL.has(cat) ? 'Nenhum' : null} items=${items(cat)} value=${draft.parts[cat] || null} onChange=${(v) => setPart(cat, v)} />
+          <${Options} none=${null} items=${items(cat)} value=${draft.parts[cat] || null} onChange=${(v) => setPart(cat, v)} />
           ${draft.parts[cat] && html`<${Swatches} label=${'Cor de ' + cat} colors=${CLOTH_COLORS} value=${draft.colors[cat]} onChange=${(c) => setColor(cat, c)} none="Cor original" />`}
         <//>`)}
         ${meta && tab === 'hair' && html`
@@ -167,7 +190,8 @@ export function EditorPage({ id, account = false }) {
         </p>
         <div class="actions">
           <a class="btn ghost" href=${back}>Voltar</a>
-          ${dirty && html`<button class="btn" disabled=${saving} onClick=${() => setDraft(saved)} title="Volta para a última versão salva">Desfazer alterações</button>`}
+          <button class="btn ghost" disabled=${saving || !hist.current.list.length} onClick=${undo} title="Desfaz a última mudança">Desfazer</button>
+          ${dirty && html`<button class="btn" disabled=${saving} onClick=${() => setDraft(saved)} title="Volta para a última versão salva">Restaurar salvo</button>`}
           <button class="btn primary grow" disabled=${saving || (!dirty && !draft.provisional) || (needsCode && code.trim().length < 6)} onClick=${save}>${saving ? 'Salvando…' : 'Salvar avatar'}</button>
         </div>
       </div>

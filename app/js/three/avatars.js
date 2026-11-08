@@ -21,9 +21,22 @@ export const SLIDERS = {
   'Olhos e sobrancelhas': [['Tamanho do olho', 'eye_small', 'eye_big'], ['Canto do olho', 'eye_down', 'eye_up'], ['Prega do olho', null, 'eye_fold'], ['Altura da sobrancelha', 'brow_down', 'brow_up'], ['Ângulo da sobrancelha', 'brow_angle_down', 'brow_angle_up']],
   'Nariz e boca': [['Largura do nariz', 'nose_thin', 'nose_wide'], ['Comprimento do nariz', 'nose_short', 'nose_long'], ['Dorso do nariz', 'nose_flat', 'nose_hump'], ['Narinas', 'nostril_narrow', 'nostril_wide'], ['Largura da boca', 'mouth_narrow', 'mouth_wide'], ['Lábios', 'lips_thin', 'lips_full']],
   'Corpo': [['Peso', 'body_thin', 'body_heavy'], ['Músculo', 'body_soft', 'body_muscle'], ['Pescoço', 'neck_thin', 'neck_wide'], ['Idade', null, 'age_older']],
+  'Proporções': [['Ombros', 'shoulders_narrow', 'shoulders_wide'], ['Tórax', 'chest_small', 'chest_big'], ['Cintura', 'waist_narrow', 'waist_wide'], ['Quadril', 'hips_narrow', 'hips_wide'], ['Barriga', 'belly_flat', 'belly_big'], ['Tronco', 'torso_short', 'torso_long', 0.6]],
+  'Braços e pernas': [['Espessura dos braços', 'arms_thin', 'arms_thick'], ['Comprimento dos braços', 'arms_short', 'arms_long', 0.6], ['Espessura das pernas', 'legs_thin', 'legs_thick'], ['Comprimento das pernas', 'legs_short', 'legs_long', 0.5]],
+  'Testa': [['Altura da testa', 'forehead_low', 'forehead_high']],
   'Traços de origem': [['Africana', null, 'race_african'], ['Asiática', null, 'race_asian'], ['Europeia', null, 'race_caucasian']],
   'Expressão': [['Sorriso', null, 'smile'], ['Sobrancelha erguida', null, 'brows_raised'], ['Sobrancelha franzida', null, 'brows_angry']],
 };
+// Tipos de corpo: ponto de partida, ajustável depois nos controles.
+export const BODY_TYPES = {
+  padrao: { label: 'Padrão', morph: {} },
+  magro: { label: 'Magro', morph: { body_thin: 0.75, body_soft: 0.2, shoulders_narrow: 0.25, arms_thin: 0.35, legs_thin: 0.3 } },
+  atletico: { label: 'Atlético', morph: { body_muscle: 0.6, body_thin: 0.2, shoulders_wide: 0.35, waist_narrow: 0.3, belly_flat: 0.4 } },
+  musculoso: { label: 'Musculoso', morph: { body_muscle: 1, body_heavy: 0.25, shoulders_wide: 0.6, chest_big: 0.4, arms_thick: 0.6, legs_thick: 0.4 } },
+  maior: { label: 'Maior', morph: { body_heavy: 0.9, belly_big: 0.5, waist_wide: 0.5, hips_wide: 0.3, arms_thick: 0.4, legs_thick: 0.35 } },
+};
+export const BODY_TYPE_KEYS = new Set(['body_thin', 'body_heavy', 'body_muscle', 'body_soft', 'shoulders_narrow', 'shoulders_wide', 'chest_small', 'chest_big', 'waist_narrow', 'waist_wide', 'hips_narrow', 'hips_wide', 'belly_flat', 'belly_big', 'arms_thin', 'arms_thick', 'legs_thin', 'legs_thick']);
+
 export const RACKETS = { none: 'Sem raquete', classic: 'Clássica', pro: 'Pro', round: 'Redonda' };
 export const POSES = { Idle: 'Em pé', Ready: 'Em guarda', SwordSlash: 'Rebatida', Victory: 'Vitória', Jump: 'Pulo', Defeat: 'Derrota' };
 
@@ -46,11 +59,30 @@ export function avatarFromName(name, forceGender) {
   });
 }
 
+// Roupa básica de cada gênero: entra sempre que faltar alguma parte (o avatar nunca fica sem roupa).
+export const BASIC_OUTFIT = {
+  male: { full: 'male_casualsuit04', top: 'elvs_crude_t-shirt_male', bottom: 'cortu_cargo_pants' },
+  female: { full: 'female_sportsuit01', top: 'joepal_crude_t-shirt_female', bottom: 'cortu_cargo_pants' },
+};
+// Vestimenta obrigatória: conjunto inteiro, ou parte de cima E parte de baixo.
+export function dressed(parts, gender) {
+  const p = { ...parts };
+  const basic = BASIC_OUTFIT[gender] || BASIC_OUTFIT.male;
+  if (p.full) { delete p.top; delete p.bottom; return p; }
+  if (p.top && !p.bottom) p.bottom = basic.bottom;
+  else if (p.bottom && !p.top) p.top = basic.top;
+  else if (!p.top && !p.bottom) p.full = basic.full;
+  return p;
+}
+// Morphs só dentro do intervalo do modelo (0 a 1): além disso o MakeHuman extrapola e o corpo deforma.
+const clampMorphs = (m) => Object.fromEntries(Object.entries(m || {}).filter(([, v]) => Number.isFinite(+v) && +v > 0).map(([k, v]) => [k, Math.min(1, +v)]));
+
 export function normalizeAvatar(a = {}) {
   if (!a || a.v !== 2) a = { gender: 'male' };
+  const gender = a.gender === 'female' ? 'female' : 'male';
   return {
-    v: 2, gender: a.gender === 'female' ? 'female' : 'male', skin: SKINS[a.skin] ? a.skin : 'clara',
-    morph: { ...(a.morph || {}) }, parts: { ...(a.parts || {}) }, colors: { ...(a.colors || {}) },
+    v: 2, gender, skin: SKINS[a.skin] ? a.skin : 'clara',
+    morph: clampMorphs(a.morph), parts: dressed(a.parts || {}, gender), colors: { ...(a.colors || {}) },
     height: a.height || 1, racket: { style: 'classic', color: '#c0262d', ...(a.racket || {}) }, pose: a.pose || 'Idle',
     medal: a.medal || null, thumb: a.thumb || null, provisional: !!a.provisional,
   };
@@ -73,11 +105,47 @@ export function loadGender(gender) {
       ]);
       const template = gltf.scene;
       const clips = buildClips(template);
-      return { gender, meta, template, clips };
+      const lib = { gender, meta, template, clips };
+      markBaseLayer(lib);
+      lib.rig = restRig(template);
+      return lib;
     })());
   }
   return genders.get(gender);
 }
+
+// Camada básica (bermuda e, por cima, a área que toda peça de cima cobre): é a pele que TODA roupa esconde.
+// Pintada como tecido, ela só aparece se nenhuma roupa estiver no lugar: carregando, falha de rede ou peça inválida.
+function markBaseLayer(lib) {
+  let body = null;
+  lib.template.traverse((o) => { if (o.isMesh && o.name === 'Human') body = o; });
+  const ma = body?.geometry.attributes._maska;
+  if (!ma) return;
+  const bits = (cats) => cats.flatMap((c) => lib.meta.catalog[c] || []).filter((e) => e.bitA !== undefined).map((e) => 2 ** e.bitA);
+  const all = (list) => list.reduce((a, b) => a + b, 0);
+  const upper = all(bits(['top', 'full'])), lower = all(bits(['bottom', 'full']));
+  const layer = new Float32Array(ma.count);
+  for (let i = 0; i < ma.count; i++) {
+    const m = ma.getX(i);
+    // cada bit é uma peça; o vértice entra se TODAS as peças do grupo o cobrem
+    const covers = (mask) => mask > 0 && (m & mask) === mask;
+    layer[i] = covers(lower) || covers(upper) ? 1 : 0;
+  }
+  body.geometry.setAttribute('baseLayer', new THREE.BufferAttribute(layer, 1));
+}
+
+// Pose de repouso do esqueleto, em coordenadas da cena do modelo: base para reposicionar articulações por morph.
+function restRig(template) {
+  template.updateMatrixWorld(true);
+  const bones = [];
+  template.traverse((o) => { if (o.isBone) bones.push(o); });
+  const world = new Map(bones.map((b) => [b.name, b.matrixWorld.clone()]));
+  const parentWorld = new Map(bones.map((b) => [b.name, b.parent.matrixWorld.clone()]));
+  return { names: bones.map((b) => b.name), parent: new Map(bones.map((b) => [b.name, b.parent.isBone ? b.parent.name : null])), world, parentWorld };
+}
+
+// Bones movidos por trilhas de posição nas animações: o deslocamento deles vai para a raiz (chão), não para o osso.
+const POSITION_DRIVEN = new Set(['pelvis', 'root']);
 
 // Mantido para o editor saber o catálogo sem montar um avatar.
 export const loadLibrary = () => loadGender('male');
@@ -181,6 +249,8 @@ export class Avatar {
     this.mixer = new THREE.AnimationMixer(this.root);
     this.current = null;
     this.group.scale.setScalar(this.config.height);
+    // invisível até a roupa estar no lugar: o avatar nunca aparece sem roupa, nem durante o carregamento
+    this.group.visible = false;
     this.ready = this.apply(this.config, true);
   }
 
@@ -209,15 +279,26 @@ export class Avatar {
     }
     const brows = this.meshes.find((m) => /brow/.test(m.name));
     if (brows && cfg.colors.hair) brows.material.color.set(cfg.colors.hair).multiplyScalar(0.8);
+    if (first || JSON.stringify(prev.morph) !== JSON.stringify(cfg.morph)) this.applyJoints();
+    const drop = (cat) => {
+      const has = this.parts.get(cat);
+      if (!has) return;
+      has.meshes.forEach((m) => { m.removeFromParent(); m.geometry && this.disposeLater(m); });
+      this.parts.delete(cat);
+    };
     for (const [cat] of CATEGORIES) {
       const want = cfg.parts[cat] || null;
-      const has = this.parts.get(cat);
-      if (has && has.name !== want) {
-        has.meshes.forEach((m) => { m.removeFromParent(); m.geometry && this.disposeLater(m); });
-        this.parts.delete(cat);
-      }
-      if (want && (!this.parts.has(cat) || this.parts.get(cat).name !== want) && meta.catalog[cat]?.some((x) => x.name === want)) {
-        await this.attachPart(cat, want);
+      const valid = want && meta.catalog[cat]?.some((x) => x.name === want);
+      if (!valid) { drop(cat); continue; }
+      if (this.parts.get(cat)?.name !== want) {
+        // a peça nova carrega antes de a antiga sair: troca sem deixar o corpo descoberto
+        const old = this.parts.get(cat);
+        try {
+          await this.attachPart(cat, want);
+        } catch (e) {
+          console.warn('peça não carregou', cat, want, e);
+        }
+        if (old && this.parts.get(cat) !== old) old.meshes.forEach((m) => { m.removeFromParent(); m.geometry && this.disposeLater(m); });
       }
       const part = this.parts.get(cat);
       if (part) {
@@ -227,7 +308,18 @@ export class Avatar {
         }
       }
     }
+    // conjunto inválido ou que falhou ao carregar: veste a roupa básica (a camada básica da pele cobre até lá)
+    const has = (c) => this.parts.has(c);
+    if (!has('full') && !(has('top') && has('bottom'))) {
+      const basic = BASIC_OUTFIT[cfg.gender].full;
+      if (this.parts.get('full')?.name !== basic) {
+        this.config.parts = { ...cfg.parts, full: basic };
+        try { await this.attachPart('full', basic); } catch (e) { console.warn('roupa básica não carregou', e); }
+        if (has('full')) { drop('top'); drop('bottom'); }
+      }
+    }
     this.updateMask();
+    this.group.visible = true;
     if (first || JSON.stringify(prev.racket) !== JSON.stringify(cfg.racket)) this.attachRacket();
     if (first || prev.medal !== cfg.medal) this.attachMedal();
     if (first) this.play(cfg.pose || 'Idle', { fade: 0 });
@@ -243,12 +335,19 @@ export class Avatar {
       if (!src.isSkinnedMesh) return;
       const m = new THREE.SkinnedMesh(src.geometry, partMaterial(src.material, cat, this));
       m.name = src.name;
+      // a malha nova não herda os nomes dos morphs (o GLTFLoader os põe na malha original): sem isso a roupa
+      // e o cabelo ignoravam peso, músculo e medidas, e o corpo atravessava o tecido
+      if (src.morphTargetDictionary) {
+        m.morphTargetDictionary = { ...src.morphTargetDictionary };
+        m.morphTargetInfluences = new Array(src.morphTargetInfluences.length).fill(0);
+      }
       m.frustumCulled = false;
       m.castShadow = cat !== 'glasses';
       m.receiveShadow = cat !== 'hair' && cat !== 'beard';
-      const skel = new THREE.Skeleton(src.skeleton.bones.map((b) => this.bone(b.name)), src.skeleton.boneInverses);
+      const skel = new THREE.Skeleton(src.skeleton.bones.map((b) => this.bone(b.name)), src.skeleton.boneInverses.map((x) => x.clone()));
       this.armature.add(m);
       m.bind(skel, src.bindMatrix);
+      this.rebind(m);
       for (const [k, v] of Object.entries(this.config.morph)) {
         const i = m.morphTargetDictionary?.[k];
         if (i !== undefined) m.morphTargetInfluences[i] = v;
@@ -258,6 +357,57 @@ export class Avatar {
     });
     this.meshes.push(...meshes);
     this.parts.set(cat, { name, meshes });
+  }
+
+  // Articulações acompanham o corpo: soma os deslocamentos de cada morph (medidos no Blender ao reajustar o
+  // esqueleto) e recalcula a pose de repouso e o "bind" de cada malha. Sem isso, ombro largo ou perna longa
+  // dobram no lugar errado ao animar.
+  applyJoints() {
+    const J = this.lib.meta.joints, rig = this.lib.rig;
+    if (!J || !rig) return;
+    const morph = this.config.morph;
+    const off = new Map();
+    let ground = 0;
+    for (const [name, v] of Object.entries(morph)) {
+      if (!v) continue;
+      ground += (this.lib.meta.ground?.[name] || 0) * v;
+      for (const [b, d] of Object.entries(J[name] || {})) {
+        const o = off.get(b) || [0, 0, 0];
+        o[0] += d[0] * v; o[1] += d[1] * v; o[2] += d[2] * v;
+        off.set(b, o);
+      }
+    }
+    this.root.position.y = -ground;
+    const world = new Map();
+    const inv = new THREE.Matrix4(), local = new THREE.Matrix4();
+    for (const name of rig.names) {
+      const w = rig.world.get(name).clone();
+      const o = POSITION_DRIVEN.has(name.toLowerCase()) ? null : off.get(name);
+      if (o) { w.elements[12] += o[0]; w.elements[13] += o[1]; w.elements[14] += o[2]; }
+      world.set(name, w);
+      const p = rig.parent.get(name);
+      local.copy(inv.copy(p ? world.get(p) : rig.parentWorld.get(name)).invert()).multiply(w);
+      this.bone(name)?.position.setFromMatrixPosition(local);
+    }
+    this.jointWorld = world;
+    for (const m of this.meshes) if (m.isSkinnedMesh) this.rebind(m);
+  }
+
+  // boneInverse novo = inverso da articulação nova × (articulação original × inverso original).
+  rebind(m) {
+    const rig = this.lib.rig, sk = m.skeleton;
+    if (!rig || !this.jointWorld || !sk) return;
+    // o SkeletonUtils.clone compartilha as matrizes com o modelo e com os outros avatares: cada um ganha as suas
+    if (!m.userData.origInv) {
+      m.userData.origInv = sk.boneInverses.map((x) => x.clone());
+      sk.boneInverses = sk.boneInverses.map((x) => x.clone());
+    }
+    const tmp = new THREE.Matrix4();
+    sk.bones.forEach((b, i) => {
+      const rest = rig.world.get(b.name), now = this.jointWorld.get(b.name);
+      if (!rest || !now) return;
+      sk.boneInverses[i].copy(tmp.copy(now).invert().multiply(rest).multiply(m.userData.origInv[i]));
+    });
   }
 
   disposeLater(m) {
@@ -294,6 +444,7 @@ export class Avatar {
       const src = this.lib.template.getObjectByName(b.name);
       if (src) { b.quaternion.copy(src.quaternion); b.position.copy(src.position); }
     }
+    this.applyJoints();
     const gs = this.group.scale.clone(), gp = this.group.position.clone(), gq = this.group.quaternion.clone();
     this.group.scale.setScalar(1); this.group.position.set(0, 0, 0); this.group.quaternion.identity();
     this.group.updateMatrixWorld(true);

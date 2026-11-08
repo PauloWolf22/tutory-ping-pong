@@ -12,6 +12,8 @@ import bpy
 from bl_ext.user_default.mpfb.services.humanservice import HumanService
 from bl_ext.user_default.mpfb.services.targetservice import TargetService
 from bl_ext.user_default.mpfb.services.clothesservice import ClothesService
+from bl_ext.user_default.mpfb.services.rigservice import RigService
+from mathutils import Vector
 from bl_ext.user_default.mpfb.services.locationservice import LocationService
 from bl_ext.user_default.mpfb.entities.objectproperties import HumanObjectProperties
 from bl_ext.user_default.mpfb.entities.clothes.mhclo import Mhclo
@@ -45,6 +47,21 @@ FACE = {
     'brow_down': ['eyebrows/eyebrows-trans-down'], 'brow_up': ['eyebrows/eyebrows-trans-up'],
     'brow_angle_down': ['eyebrows/eyebrows-angle-down'], 'brow_angle_up': ['eyebrows/eyebrows-angle-up'],
     'neck_thin': ['neck/neck-scale-horiz-decr'], 'neck_wide': ['neck/neck-scale-horiz-incr'],
+}
+# Corpo por região (fase 4): medidas reais do MakeHuman, cada uma com aumentar e diminuir.
+# Junto com elas o esqueleto é reajustado (ombro, cotovelo, joelho...) para o corpo não deformar ao animar.
+BODY = {
+    'shoulders_wide': ['torso/measure-shoulder-dist-incr'], 'shoulders_narrow': ['torso/measure-shoulder-dist-decr'],
+    'chest_big': ['torso/measure-bust-circ-incr'], 'chest_small': ['torso/measure-bust-circ-decr'],
+    'waist_wide': ['torso/measure-waist-circ-incr'], 'waist_narrow': ['torso/measure-waist-circ-decr'],
+    'hips_wide': ['torso/measure-hips-circ-incr'], 'hips_narrow': ['torso/measure-hips-circ-decr'],
+    'belly_big': ['stomach/stomach-pregnant-incr'], 'belly_flat': ['stomach/stomach-pregnant-decr'],
+    'arms_thick': ['arms/measure-upperarm-circ-incr', 'arms/l-lowerarm-fat-incr', 'arms/r-lowerarm-fat-incr'], 'arms_thin': ['arms/measure-upperarm-circ-decr', 'arms/l-lowerarm-fat-decr', 'arms/r-lowerarm-fat-decr'],
+    'arms_long': ['arms/measure-upperarm-length-incr', 'arms/measure-lowerarm-length-incr'], 'arms_short': ['arms/measure-upperarm-length-decr', 'arms/measure-lowerarm-length-decr'],
+    'legs_thick': ['legs/measure-thigh-circ-incr', 'legs/measure-calf-circ-incr'], 'legs_thin': ['legs/measure-thigh-circ-decr', 'legs/measure-calf-circ-decr'],
+    'legs_long': ['legs/measure-upperleg-height-incr', 'legs/measure-lowerleg-height-incr'], 'legs_short': ['legs/measure-upperleg-height-decr', 'legs/measure-lowerleg-height-decr'],
+    'torso_long': ['torso/measure-napetowaist-dist-incr'], 'torso_short': ['torso/measure-napetowaist-dist-decr'],
+    'forehead_high': ['forehead/forehead-scale-vert-incr'], 'forehead_low': ['forehead/forehead-scale-vert-decr'],
 }
 EXPRESSION_UNITS = {'smile': ('mouth-corner-puller', 0.8), 'brows_raised': ('eyebrows-left-up', 1.0), 'brows_angry': ('eyebrows-left-down', 1.0)}
 MACROS = {
@@ -182,7 +199,7 @@ HumanService.set_character_skin(skin, human, skin_type='GAMEENGINE', material_in
 
 # 4) morphs de rosto
 morph_coords = dict(macro_coords)
-for name, targets in FACE.items():
+for name, targets in {**FACE, **BODY}.items():
     for i, t in enumerate(targets):
         TargetService.load_target(human, os.path.join(DATA, t + '.target.gz'), weight=1.0, name=f'__{name}{i}')
     morph_coords[name] = mix_coords(human)
@@ -213,6 +230,33 @@ def coords_of(obj):
 everything = [v for v in base_parts.values()] + [(i['obj'], i['mhclo']) for items in catalog.values() for i in items]
 rest = {obj.name: coords_of(obj) for obj, _ in everything}
 fitted = {obj.name: {} for obj, _ in everything}
+
+
+# Articulações de cada morph: o esqueleto é reajustado ao corpo deformado (MPFB refit) e guardamos quanto cada
+# articulação andou, em coordenadas do glTF (x, z, -y). O app soma esses deslocamentos com o peso de cada morph,
+# para o ombro, o cotovelo e o joelho ficarem no lugar certo do corpo novo ao animar.
+def joint_heads():
+    bpy.context.view_layer.update()
+    mw = rig.matrix_world
+    return {b.name: mw @ b.head_local for b in rig.data.bones}
+
+
+def refit():
+    RigService.refit_existing_armature(rig, human)
+    if bpy.context.object and bpy.context.object.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+
+def ground_of(co):
+    mw = human.matrix_world
+    return min((mw @ Vector(co[i:i + 3])).z for i in range(0, len(co), 3))
+
+
+refit()
+heads0 = joint_heads()
+ground0 = ground_of(base_coords)
+bone_offsets, ground_offsets = {}, {}
+JOINT_EPS = 0.0015  # 1,5 mm
 for mname, co in morph_coords.items():
     k = add_key(human, '__fit', co)
     k.value = 1.0
@@ -221,7 +265,20 @@ for mname, co in morph_coords.items():
         now = coords_of(obj)
         if max(abs(a - b) for a, b in zip(rest[obj.name], now)) > EPS:
             fitted[obj.name][mname] = now
+    refit()
+    moved = {}
+    for name, h in joint_heads().items():
+        d = h - heads0[name]
+        if d.length > JOINT_EPS:
+            moved[name] = [round(d.x, 5), round(d.z, 5), round(-d.y, 5)]
+    if moved:
+        bone_offsets[mname] = moved
+    g = ground_of(co) - ground0
+    if abs(g) > 0.001:
+        ground_offsets[mname] = round(g, 5)
     human.shape_key_remove(k)
+refit()
+log('articulações por morph', {k: len(v) for k, v in bone_offsets.items()}, 'chão', ground_offsets)
 for obj, m in everything:
     obj.data.vertices.foreach_set('co', rest[obj.name])
     obj.data.update()
@@ -236,6 +293,63 @@ for k in human.data.shape_keys.key_blocks[1:]:
 
 # 6) máscara: cada bit diz que aquela peça cobre o vértice. Vale para a troca no navegador.
 mask_for = {m.vertex_group: m.vertex_group.split('.', 1)[-1] for m in human.modifiers if m.type == 'MASK' and m.invert_vertex_group}
+
+# Muitas peças não trazem o grupo de "pele escondida" (suéter, polo, calças): sem ele a pele fura o tecido.
+# Cobertura geométrica: a pele está coberta se, saindo do vértice pela normal, encontra a peça a poucos centímetros
+# (ou se a peça entrou no corpo). Testado no corpo base e nos extremos de corpo, para valer em qualquer combinação.
+from mathutils.bvhtree import BVHTree
+COVER_SHAPES = ['', 'body_heavy', 'body_muscle', 'body_thin', 'shoulders_wide', 'chest_big', 'belly_big', 'hips_wide', 'arms_thick', 'legs_thick']
+body_group = human.vertex_groups['body'].index
+# cabeça, pescoço e mãos ficam de fora: gola e punho não podem abrir buraco no rosto ou na mão
+skip_groups = {g.index for g in human.vertex_groups if g.name.lower().startswith(('head', 'neck', 'hand', 'thumb', 'index', 'middle', 'ring', 'pinky'))}
+def skipped_vertex(v):
+    w = {g.group: g.weight for g in v.groups}
+    return sum(x for gi, x in w.items() if gi in skip_groups) > 0.35
+body_verts = [v.index for v in human.data.vertices if any(g.group == body_group for g in v.groups) and not skipped_vertex(v)]
+
+
+def body_shape(name):
+    bm = bmesh.new()
+    bm.from_mesh(human.data)
+    co = morph_coords.get(name) or base_coords
+    bm.verts.ensure_lookup_table()
+    for v in bm.verts:
+        v.co = Vector(co[v.index * 3:v.index * 3 + 3])
+    bm.normal_update()
+    mw = human.matrix_world
+    rot = mw.to_3x3().normalized()
+    out = {i: (mw @ bm.verts[i].co, (rot @ bm.verts[i].normal).normalized()) for i in body_verts}
+    bm.free()
+    return out
+
+
+shapes = {n: body_shape(n) for n in COVER_SHAPES if n == '' or n in morph_coords}
+cover_counts = {}
+for cat in ('full', 'top', 'bottom', 'shoes'):
+    for item in catalog[cat]:
+        obj = item['obj']
+        polys = [tuple(p.vertices) for p in obj.data.polygons]
+        covered = set()
+        for sname, verts in shapes.items():
+            co = fitted[obj.name].get(sname) if sname else None
+            co = co or rest[obj.name]
+            ow = obj.matrix_world
+            bvh = BVHTree.FromPolygons([ow @ Vector(co[i:i + 3]) for i in range(0, len(co), 3)], polys)
+            for i, (p, n) in verts.items():
+                if i in covered:
+                    continue
+                # o tecido tem de estar POR CIMA (normal parecida com a da pele): o lado de um tronco visto do braço não conta
+                for d, reach in ((n, 0.04), (-n, 0.02)):
+                    hit = bvh.ray_cast(p + d * 0.0005, d, reach)
+                    if hit[0] is not None and hit[1].dot(n) > 0.45:
+                        covered.add(i)
+                        break
+        gname = 'tpcover.' + item['name']
+        vg = human.vertex_groups.new(name=gname)
+        vg.add(sorted(covered), 1.0, 'REPLACE')
+        mask_for[gname] = item['name']
+        cover_counts[item['name']] = len(covered)
+log('cobertura geométrica', cover_counts)
 bits_a, bits_b = {}, {}
 for cat in ('full', 'top', 'bottom'):
     for item in catalog[cat]:
@@ -338,5 +452,6 @@ log('base', round(sizes['base'] / 1e6, 1), 'MB')
 json.dump({
     'gender': GENDER, 'morphs': list(morph_coords), 'catalog': out_catalog, 'skins': skin_index, 'defaults': DEFAULTS,
     'baseSize': sizes['base'], 'skipped': skipped, 'vertices': len(human.data.vertices),
+    'joints': bone_offsets, 'ground': ground_offsets,
 }, open(os.path.join(OUT, f'human_{GENDER}.json'), 'w', encoding='utf8'), ensure_ascii=False, indent=1)
 log('fim')

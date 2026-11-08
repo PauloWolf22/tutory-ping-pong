@@ -126,3 +126,57 @@ Tudo em `supabase/sports.sql`, que pode ser rodado de novo sem perder dados. **R
 - Total: motor 52, futebol 40, nuvem 13, Tutory Sports 27, todos passando.
 - Telas com banco simulado: abas do ranking, filtro por faixa, amistoso de Counter-Strike por equipe, Pontuação, Aprovações. Em 375 px não há rolagem lateral da página; as abas do ranking rolam dentro da própria faixa.
 - **Não testado:** o SQL no banco real, que depende do Paulo rodar o script. O teste com o banco simulado segue as mesmas regras, mas não substitui o banco real.
+
+---
+
+# Fase 4: Avatares 3D, estrutura do modelo-base (08/11/2026)
+
+## Causas encontradas (medidas, não suposições)
+1. **Roupa e cabelo ignoravam todos os controles de corpo.** Ao vestir uma peça, o app criava a malha nova sem os nomes dos morphs. Peso, músculo e pescoço mexiam só no corpo, e o corpo atravessava o tecido. Isso acontecia desde a primeira versão dos avatares realistas.
+2. **Cinco peças masculinas não escondiam a pele por baixo** (suéter, polo, camiseta justa, calça cargo e calça social; nas femininas, várias também). O pacote do MakeHuman não traz o grupo de "pele escondida" para elas, então a pele furava o tecido mesmo parada.
+3. **Controles além do modelo.** O editor ia até 160% de cada morph, e o MakeHuman extrapola e deforma o corpo.
+4. **Esqueleto fixo.** Medidas que mudam onde ficam as articulações (ombro, braço, perna, tronco) não moviam o esqueleto: o corpo dobraria no lugar errado.
+5. **Dava para tirar toda a roupa** ("Nenhum" nos conjuntos), e o corpo aparecia sem roupa enquanto as peças carregavam.
+
+## Correções
+- **Morphs nas peças** (`avatars.js > attachPart`): a malha nova herda os nomes. Agora roupa, cabelo, barba e chapéu acompanham cada controle.
+- **Cobertura geométrica** (`build_human.py`):
+  - Para cada peça e cada vértice da pele, um raio sai pela normal. Se encontra o tecido por cima a menos de 4 cm, ou o tecido entrou no corpo, aquela pele fica escondida quando a peça está vestida.
+  - O teste é feito no corpo base e em 9 extremos (pesado, musculoso, magro, ombros, tórax, barriga, quadril, braços e pernas).
+  - Cabeça, pescoço e mãos ficam fora, para gola e punho não abrirem buraco no rosto ou na mão.
+- **Esqueleto que acompanha o corpo:**
+  - Para cada morph, o MPFB reajusta o esqueleto ao corpo deformado e o deslocamento de cada articulação vai para `human_<gênero>.json` (`joints`, `ground`).
+  - O app soma os deslocamentos com o peso de cada controle e recalcula a pose de repouso e o encaixe (bind) de cada malha.
+  - Perna mais longa levanta o corpo para os pés continuarem no chão.
+  - Teste automático: sem morph, o reajuste não muda nada (diferença 0).
+- **Controles novos de corpo** (medidas reais do MakeHuman): ombros, tórax, cintura, quadril, barriga, tronco, espessura e comprimento de braços e pernas, e testa (no Rosto).
+  - Tipos de corpo como ponto de partida: Padrão, Magro, Atlético, Musculoso e Maior.
+  - Os comprimentos usam 50 a 60% do intervalo do modelo, porque perna longa no máximo do MakeHuman soma 17 cm.
+- **Intervalo real:** cada controle vai de 0 a 1 (antes ia até 1,6). Avatares já salvos acima de 1 são limitados a 1 ao abrir.
+- **Vestimenta obrigatória em todas as etapas:**
+  - Sem opção "Nenhum" em conjuntos, partes de cima e de baixo.
+  - Escolher só a parte de cima completa a de baixo com a peça básica, e vice-versa.
+  - Peça inexistente ou que falhou ao carregar vira a roupa básica.
+  - Na troca, a peça nova carrega antes de a antiga sair.
+  - O avatar fica invisível até a roupa estar no lugar.
+  - Camada básica pintada na pele, na área que toda roupa cobre (regata e bermuda escuras). Ela só aparece se nenhuma peça carregar.
+- **Editor:**
+  - Desfazer passo a passo (arrastar um controle conta como um passo).
+  - "Restaurar salvo".
+  - Câmeras Frente, Lado e Costas, além de Rosto, Busto e Corpo.
+
+## Testado
+- `tests/avatar-stress.html?g=male|female&pose=...&view=front|side|back`: 16 combinações por gênero, montadas com o avatar real e fotografadas. Cobre:
+  - corpo base, magro, pesado, musculoso, atlético e maior;
+  - ombro largo com braço longo, perna longa, perna curta com tronco longo, pesado com musculoso, quadril largo e magro com braço fino;
+  - roupa ausente, só a parte de cima, peça inexistente e morph salvo em 1,6.
+  - Checagens automáticas: sempre vestido, nenhum morph acima de 1, reajuste do esqueleto neutro. Todas passaram nos dois gêneros.
+  - Conferido visualmente nas poses Em guarda e Vitória: sem pele atravessando o tecido nem peça desalinhada nas combinações acima.
+- `tools/avatar_audit.py`: auditoria no Blender (roupa dentro da pele visível, deslocamento de articulações por morph).
+- Editor no app: tipo de corpo, Costas, Desfazer e a aba Roupas sem "Nenhum". Sem erros no console.
+- Regressão: motor 52, futebol 40, nuvem 13, Tutory Sports 27, todos passando.
+
+## Limites e peso
+- O corpo base passou de 6,9 MB para 9,1 MB (68 morphs), e `app/assets/humans` foi para cerca de 231 MB. O app baixa só o corpo e as peças em uso.
+- Não testado em celular real nem com poses fora das prontas (Rebatida, Pulo, Derrota).
+- As roupas são as do pacote do MakeHuman: uniformes, kimono, acessórios novos e a logo TUTORY entram na próxima etapa da fase 4, como peças modeladas no Blender.

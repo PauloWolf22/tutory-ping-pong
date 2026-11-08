@@ -589,7 +589,10 @@ a.bk-card:hover { border-color: var(--beam); }
 }
 
 /* editor realista */
-.ed-cams { position: absolute; left: 24px; bottom: 18px; display: flex; gap: 6px; }
+.ed-cams { position: absolute; left: 24px; right: 24px; bottom: 18px; display: flex; flex-wrap: wrap; gap: 6px; }
+.ed-cams-sep { width: 1px; background: var(--line); margin: 4px 4px; }
+.ed-cams { pointer-events: none; }
+.ed-cams > * { pointer-events: auto; }
 .ed-slider { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 12.5px; color: var(--muted); min-height: 32px; }
 .ed-slider input { width: 100%; accent-color: var(--beam); }
 @media (max-width: 960px) { .ed-cams { bottom: 10px; left: 10px; } }
