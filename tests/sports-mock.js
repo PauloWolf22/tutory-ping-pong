@@ -153,6 +153,14 @@ export function createMockSportsDb({ adminToken = 'tok' } = {}) {
       this.resets.delete(u.email);
       return { password: u.password, email: u.email };
     },
+    _fin: { data: {}, rev: 0 },
+    async finGet(t) { this.isAdmin(t); return structuredClone(this._fin); },
+    async finSave(t, rev, data) {
+      this.isAdmin(t);
+      if (rev !== this._fin.rev) err('O financeiro foi alterado em outro aparelho. Os dados foram recarregados; repita a ação.', 409);
+      this._fin = { data: structuredClone(data), rev: rev + 1 };
+      return { rev: this._fin.rev };
+    },
     listen(fn) { this.listener = fn; },
   };
   return db;

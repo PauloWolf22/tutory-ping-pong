@@ -1,5 +1,6 @@
 // Football Team Draw: ferramenta só de nomes para o futebol de terça. Sem avatares e sem ranking, como pedido.
-import { html, useState, useEffect, useRef, useLayoutEffect, useDoc, store, act, toast, confirmDialog, openDialog, fmtDate } from './lib.js';
+import { html, useState, useEffect, useRef, useLayoutEffect, useDoc, store, act, toast, confirmDialog, openDialog, fmtDate, handleError } from './lib.js';
+import { sports } from '../core/sports.js';
 import * as F from '../core/football.js';
 import { sfx } from './sfx.js';
 
@@ -197,17 +198,79 @@ function Stats({ f }) {
 }
 
 // ------------------------------------------------------------------ financeiro (só administrador)
-function Finance({ f }) {
-  const fin = f.finance;
-  const sum = F.financeSummary(f);
-  const [price, setPrice] = useState(String(fin.pricePerHour || ''));
-  const [hours, setHours] = useState(String(fin.hours || ''));
-  useEffect(() => { setPrice(String(fin.pricePerHour || '')); setHours(String(fin.hours || '')); }, [fin.pricePerHour, fin.hours]);
+// No site online (Supabase) o financeiro fica numa tabela protegida, fora do documento público.
+// No servidor da rede interna e no modo local ele continua no documento.
+function useFinance(f, admin) {
+  const prot = store.mode === 'cloud';
+  const [remote, setRemote] = useState(null);
+  const [error, setError] = useState(null);
+  const call = (fn) => sports.init().then(() => sports.admin(fn));
+  const load = async () => {
+    setError(null);
+    try {
+      const r = await call((db, t) => db.finGet(t));
+      const rec = F.normalizeFinanceRecord(r.data);
+      let rev = r.rev;
+      // financeiro gravado no documento público por uma versão anterior: move para a tabela e limpa o documento
+      if (F.hasFinance(f.finance)) {
+        if (!F.hasFinance(rec.current)) {
+          rec.current = structuredClone(f.finance);
+          rev = (await call((db, t) => db.finSave(t, rev, rec))).rev;
+        }
+        act((d) => { d.football.finance = F.newFinance(); });
+      }
+      setRemote({ rec, rev });
+    } catch (e) { setError(e.message || 'Não foi possível abrir o financeiro.'); }
+  };
+  useEffect(() => { if (prot && admin) load(); }, [prot, admin]);
+  const write = async (mutate) => {
+    const rec = structuredClone(remote.rec);
+    mutate(rec);
+    try {
+      const { rev } = await call((db, t) => db.finSave(t, remote.rev, rec));
+      setRemote({ rec, rev });
+    } catch (e) {
+      if (e.status === 409) load();
+      throw e;
+    }
+  };
+  const fin = prot ? remote?.rec.current : f.finance;
+  return {
+    prot, fin, error, reload: load,
+    view: fin && { ...f, finance: fin },
+    archive: prot ? remote?.rec.archive || [] : [],
+    async run(fn, msg) {
+      if (!prot) return act((d) => fn(d.football), msg);
+      try {
+        await write((rec) => fn({ ...f, finance: rec.current }));
+        if (msg) toast(msg, 'ok');
+      } catch (e) { handleError(e); }
+    },
+    // nova terça: guarda o resumo do dia e zera os pagamentos. false = não conseguiu gravar.
+    async closeDay() {
+      if (!prot) return true;
+      if (!remote) return false;
+      try { await write((rec) => F.closeFinanceDay(f, rec)); return true; } catch (e) { handleError(e); return false; }
+    },
+  };
+}
+
+function Finance({ f, money }) {
+  const { fin, view, run, prot, error, reload, archive } = money;
+  const [price, setPrice] = useState(String(fin?.pricePerHour || ''));
+  const [hours, setHours] = useState(String(fin?.hours || ''));
+  useEffect(() => { setPrice(String(fin?.pricePerHour || '')); setHours(String(fin?.hours || '')); }, [fin?.pricePerHour, fin?.hours]);
+  if (!fin) {
+    return html`<section class="glass card fb-finance"><span class="overline">Financeiro</span>
+      ${error ? html`<p class="notice warn">${error} <button class="btn sm" onClick=${reload}>Tentar de novo</button></p>`
+        : html`<p class="muted">Abrindo o financeiro protegido…</p>`}</section>`;
+  }
+  const sum = F.financeSummary(view);
   const save = (e) => {
     e.preventDefault();
-    act((d) => F.setFinance(d.football, { pricePerHour: String(price).replace(',', '.') || 0, hours: String(hours).replace(',', '.') || 0 }), 'Valores salvos.');
+    run((x) => F.setFinance(x, { pricePerHour: String(price).replace(',', '.') || 0, hours: String(hours).replace(',', '.') || 0 }), 'Valores salvos.');
   };
-  const outOfSplit = f.players.filter((p) => !F.inSplit(f, p));
+  const outOfSplit = f.players.filter((p) => !F.inSplit(view, p));
   return html`<details class="glass card fb-finance" open=${sum.total > 0}>
     <summary><span class="overline">Financeiro</span> <b>${sum.total ? `${brl(sum.received)} de ${brl(sum.total)} recebidos` : 'Defina o valor da quadra'}</b></summary>
     <form class="fb-fin-form" onSubmit=${save}>
@@ -226,14 +289,16 @@ function Finance({ f }) {
         <span class="fb-pay-name">${r.name}${r.quit ? html` <small class="muted">(desistiu)</small>` : ''}</span>
         <b>${brl(r.due)}</b>
         <span class=${'chip ' + (r.paid ? 'fb-win' : 'plain')}>${r.paid ? 'PAGO' : 'Pendente'}</span>
-        <button class="btn sm ${r.paid ? 'ghost' : ''}" onClick=${() => act((d) => F.setPaid(d.football, r.id, !r.paid))}>${r.paid ? 'Desmarcar' : 'Marcar pago'}</button>
-        ${!r.paid && html`<button class="btn sm ghost" title="Tirar do rateio" onClick=${() => act((d) => F.setSplit(d.football, r.id, false))}>Tirar</button>`}
+        <button class="btn sm ${r.paid ? 'ghost' : ''}" onClick=${() => run((x) => F.setPaid(x, r.id, !r.paid))}>${r.paid ? 'Desmarcar' : 'Marcar pago'}</button>
+        ${!r.paid && html`<button class="btn sm ghost" title="Tirar do rateio" onClick=${() => run((x) => F.setSplit(x, r.id, false))}>Tirar</button>`}
       </li>`)}</ul>
-      ${outOfSplit.length > 0 && html`<p class="muted hint">Fora do rateio: ${outOfSplit.map((p, i) => html`${i ? ', ' : ''}<button class="linklike" onClick=${() => act((d) => F.setSplit(d.football, p.id, true))}>${p.name}</button>`)}. Toque para incluir.</p>`}
+      ${outOfSplit.length > 0 && html`<p class="muted hint">Fora do rateio: ${outOfSplit.map((p, i) => html`${i ? ', ' : ''}<button class="linklike" onClick=${() => run((x) => F.setSplit(x, p.id, true))}>${p.name}</button>`)}. Toque para incluir.</p>`}
     `}
     ${fin.log.length > 0 && html`<details class="fb-fin-log"><summary>Histórico de alterações (${fin.log.length})</summary>
       <ul>${fin.log.slice().reverse().map((l, i) => html`<li key=${i}>${fmtDate(l.at)} · ${l.what}</li>`)}</ul></details>`}
-    <p class="muted hint">Sem integração com banco: o administrador marca quem pagou.</p>
+    ${archive.length > 0 && html`<details class="fb-fin-log"><summary>Terças anteriores (${archive.length})</summary>
+      <ul>${archive.map((a) => html`<li key=${a.closedAt}>${fmtDate(a.at)} · ${brl(a.summary.received)} de ${brl(a.summary.total)} recebidos · ${a.summary.paidCount} pagos, ${a.summary.pendingCount} pendentes${a.summary.pendingCount ? `: ${a.summary.rows.filter((r) => !r.paid).map((r) => r.name).join(", ")}` : ""}</li>`)}</ul></details>`}
+    <p class="muted hint">${prot ? "Guardado em área protegida: só o administrador vê. " : ""}Sem integração com banco: o administrador marca quem pagou.</p>
   </details>`;
 }
 
@@ -247,6 +312,7 @@ export function FootballPage() {
   const [swapping, setSwapping] = useState(false);
   const [picked, setPicked] = useState(null);
   const [drawing, setDrawing] = useState(null);
+  const money = useFinance(f, admin);
   useNameFlight(root, JSON.stringify(s ? [s.teams, s.queue] : 0));
   useEffect(() => () => clearInterval(root.spin), []);
 
@@ -293,7 +359,11 @@ export function FootballPage() {
     if (await confirmDialog({ title: 'Reiniciar a sessão?', body: 'Times e filas desta sessão são desfeitos. A lista de nomes fica e as rodadas jogadas vão para "Terças anteriores".', confirmLabel: 'Reiniciar sessão', danger: true, phrase: 'REINICIAR' })) act((d) => F.resetSession(d.football), 'Sessão reiniciada.');
   };
   const tuesday = async () => {
-    if (await confirmDialog({ title: 'Começar uma nova terça?', body: 'A lista de nomes e os pagamentos ficam vazios. Rodadas, desistências e pagamentos de hoje são guardados em "Terças anteriores". O valor da quadra é mantido.', confirmLabel: 'Nova terça', danger: true, phrase: 'NOVA' })) act((d) => F.newTuesday(d.football), 'Pronto para a próxima terça.');
+    if (await confirmDialog({ title: 'Começar uma nova terça?', body: 'A lista de nomes e os pagamentos ficam vazios. Rodadas, desistências e pagamentos de hoje são guardados em "Terças anteriores". O valor da quadra é mantido.', confirmLabel: 'Nova terça', danger: true, phrase: 'NOVA' })) {
+      // o financeiro protegido fecha antes; se falhar, os pagamentos de hoje ficam abertos e o administrador decide
+      if (!await money.closeDay() && !await confirmDialog({ title: 'Financeiro não foi fechado', body: `${money.error || 'Não foi possível gravar o financeiro.'} Começar a nova terça mesmo assim? Os pagamentos de hoje continuam abertos no financeiro.`, confirmLabel: 'Continuar mesmo assim', danger: true })) return;
+      act((d) => F.newTuesday(d.football), 'Pronto para a próxima terça.');
+    }
   };
 
   return html`<main class="page football" ref=${root}>
@@ -338,7 +408,7 @@ export function FootballPage() {
       <${Rounds} f=${f} />
     </div>
     <${Stats} f=${f} />
-    ${admin && html`<${Finance} f=${f} />`}
+    ${admin && html`<${Finance} f=${f} money=${money} />`}
 
     ${admin && f.archive.length > 0 && html`<details class="glass card fb-archive"><summary>Terças anteriores (${f.archive.length})</summary>
       <ul>${f.archive.map((a) => html`<li key=${a.at + '-' + (a.closedAt || 0)}><details><summary>${fmtDate(a.at)}: ${a.players.length ?? a.players} jogadores, ${a.games.length} ${a.games.length === 1 ? 'rodada' : 'rodadas'}${a.finance?.total ? ` · ${brl(a.finance.received)} de ${brl(a.finance.total)} recebidos` : ''}</summary>
