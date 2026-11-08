@@ -18,6 +18,7 @@ const eq = (a, b, m = '') => { const x = JSON.stringify(a), y = JSON.stringify(b
 const rejects = async (p, re) => { try { await p; } catch (e) { if (re && !re.test(e.message)) throw new Error('mensagem: ' + e.message); return e; } throw new Error('deveria falhar'); };
 
 // Banco simulado com as mesmas regras de supabase/schema.sql
+const C = (d) => d.comps[d.active]; // categoria em destaque do evento (formato 2, core/event.js)
 const db = {
   rev: 0, doc: null, tokens: new Set(), listener: null, offline: false,
   guard() { if (this.offline) throw new E.UserError('offline'); },
@@ -31,7 +32,7 @@ const db = {
   async playerCode(t) { if (!this.tokens.has(t)) throw new E.UserError('Entre como administrador.'); return 'ABC234'; },
   async saveAvatar(t, id, code, avatar) {
     if (!this.tokens.has(t) && code !== 'ABC234') throw new E.UserError('Código do jogador incorreto.');
-    this.doc.players.find((x) => x.id === id).avatar = avatar;
+    for (const c of Object.values(this.doc.comps)) { const p = c.players.find((x) => x.id === id); if (p) p.avatar = avatar; }
     return ++this.rev;
   },
   async save(t, rev, doc) {
@@ -42,7 +43,7 @@ const db = {
     return { httpStatus: 200, rev: ++this.rev };
   },
   // outro aparelho salvando
-  external(fn) { fn(this.doc); this.rev++; this.listener?.(this.rev); },
+  external(fn) { fn(C(this.doc)); this.rev++; this.listener?.(this.rev); },
 };
 const errors = [];
 store.onError = (e) => errors.push(e.message);
@@ -50,7 +51,7 @@ sessionStorage.clear();
 
 await test('Abre em modo Supabase com banco vazio, sem pedir criação de senha', async () => {
   await store.init({ cloud: db, pollMs: 80 });
-  eq(store.mode, 'cloud'); eq(store.remote, true); eq(store.hasPassword, true); eq(store.admin, false); eq(store.doc.players, []);
+  eq(store.mode, 'cloud'); eq(store.remote, true); eq(store.hasPassword, true); eq(store.admin, false); eq(store.view().players, []);
 });
 await test('Visitante não altera nada', async () => {
   await rejects((async () => store.update((t) => E.addPlayer(t, { name: 'X' })))(), /administrador/);
@@ -65,49 +66,49 @@ await test('Senha errada recusa; certa entra', async () => {
 await test('Administrador grava no banco e a revisão avança', async () => {
   store.update((t) => { E.addPlayer(t, { name: 'Ana' }); E.addPlayer(t, { name: 'Bia' }); });
   await wait(40);
-  eq(db.rev, 1); eq(db.doc.players.length, 2); eq(store.rev, 1);
+  eq(db.rev, 1); eq(C(db.doc).players.length, 2); eq(store.rev, 1);
 });
 await test('Gravações seguidas chegam em ordem, sem conflito', async () => {
   for (const n of ['C', 'D', 'E', 'F']) store.update((t) => E.addPlayer(t, { name: n }));
   await wait(60);
-  eq(db.doc.players.length, 6); eq(store.rev, db.rev); eq(errors, []);
+  eq(C(db.doc).players.length, 6); eq(store.rev, db.rev); eq(errors, []);
 });
 await test('Aviso de outro aparelho atualiza a tela (Realtime)', async () => {
   db.external((d) => { d.meta.name = 'NOVO NOME'; });
   await wait(30);
-  eq(store.doc.meta.name, 'NOVO NOME'); eq(store.rev, db.rev);
+  eq(store.view().meta.name, 'NOVO NOME'); eq(store.rev, db.rev);
 });
 await test('Sem o aviso, a checagem periódica atualiza', async () => {
-  db.doc.meta.edition = '2ª edição'; db.rev++;
+  C(db.doc).meta.edition = '2ª edição'; db.rev++;
   await wait(200);
-  eq(store.doc.meta.edition, '2ª edição');
+  eq(store.view().meta.edition, '2ª edição');
 });
 await test('Conflito: fica a versão do banco e o usuário é avisado', async () => {
   const silent = db.listener; db.listener = null;
-  db.doc.meta.name = 'OUTRO ADMIN'; db.rev++;
+  C(db.doc).meta.name = 'OUTRO ADMIN'; db.rev++;
   store.update((t) => { t.meta.name = 'ESTE ADMIN'; });
   await wait(60);
   db.listener = silent;
-  eq(store.doc.meta.name, 'OUTRO ADMIN'); eq(db.doc.meta.name, 'OUTRO ADMIN');
+  eq(store.view().meta.name, 'OUTRO ADMIN'); eq(C(db.doc).meta.name, 'OUTRO ADMIN');
   eq(errors.some((m) => /Outro administrador/.test(m)), true);
   errors.length = 0;
 });
 await test('Código pessoal: errado recusa, certo salva só o avatar', async () => {
-  const id = store.doc.players[0].id;
+  const id = store.view().players[0].id;
   eq(await store.playerCode(id), 'ABC234');
   await store.logout();
   eq(store.admin, false);
   await rejects(store.saveAvatar(id, { outfit: 'pirate' }, 'ZZZZZZ'), /incorreto/);
   await store.saveAvatar(id, { outfit: 'pirate' }, 'ABC234');
-  eq(db.doc.players[0].avatar.outfit, 'pirate'); eq(store.doc.players[0].avatar.outfit, 'pirate'); eq(store.rev, db.rev);
+  eq(C(db.doc).players[0].avatar.outfit, 'pirate'); eq(store.view().players[0].avatar.outfit, 'pirate'); eq(store.rev, db.rev);
 });
 await test('Sessão expirada derruba o administrador e restaura o banco', async () => {
   await store.login('certa');
   db.tokens.clear();
-  const before = db.doc.meta.name;
+  const before = C(db.doc).meta.name;
   store.update((t) => { t.meta.name = 'NAO DEVE FICAR'; });
   await wait(60);
-  eq(store.admin, false); eq(store.doc.meta.name, before); eq(db.doc.meta.name, before);
+  eq(store.admin, false); eq(store.view().meta.name, before); eq(C(db.doc).meta.name, before);
   eq(errors.some((m) => /expirada/.test(m)), true);
   errors.length = 0;
 });
@@ -116,15 +117,15 @@ await test('Sem internet marca desconectado; ao voltar, recarrega', async () => 
   await wait(200);
   eq(store.online, false);
   db.offline = false;
-  db.doc.meta.edition = '3ª edição'; db.rev++;
+  C(db.doc).meta.edition = '3ª edição'; db.rev++;
   await wait(200);
-  eq(store.online, true); eq(store.doc.meta.edition, '3ª edição');
+  eq(store.online, true); eq(store.view().meta.edition, '3ª edição');
 });
 await test('Campeonato completo pelo Store chega ao banco', async () => {
   await store.login('certa');
   store.update((t) => { E.startDraw(t); while (t.draw.status === 'live') E.drawNext(t); let m; while ((m = E.nextMatch(t))) E.saveGames(t, m.id, [[11, 5], [11, 7]]); });
   await wait(60);
-  eq(!!E.champion(db.doc), true); eq(E.champion(store.doc).id, E.champion(db.doc).id);
+  eq(!!E.champion(C(db.doc)), true); eq(E.champion(store.view()).id, E.champion(C(db.doc)).id);
 });
 await test('A biblioteca real do Supabase carrega e expõe o contrato', async () => {
   const c = await createCloud({ url: 'https://exemplo.supabase.co', anonKey: 'chave-de-teste' });

@@ -1,4 +1,5 @@
-import { html, render, store, useDoc, useRoute, Overlays, useState, useEffect } from './ui/lib.js';
+import { html, render, store, useDoc, useRoute, Overlays, useState, useEffect, CatBar } from './ui/lib.js';
+import { EventsPage } from './ui/events.js';
 import { HomePage } from './ui/home.js';
 import { PlayersPage } from './ui/players.js';
 import { EditorPage } from './ui/editor.js';
@@ -16,9 +17,11 @@ import { sports } from './core/sports.js';
 
 const LINKS = [
   ['', 'Central'], ['jogadores', 'Jogadores'], ['sorteio', 'Sorteio'], ['chave', 'Chave'], ['partidas', 'Partidas'],
-  ['ranking', 'Ranking'], ['amistosos', 'Amistosos'], ['futebol', 'Futebol'], ['regulamento', 'Regulamento'], ['estatisticas', 'Estatísticas'],
+  ['campeonatos', 'Campeonatos'], ['ranking', 'Ranking'], ['amistosos', 'Amistosos'], ['futebol', 'Futebol'], ['regulamento', 'Regulamento'], ['estatisticas', 'Estatísticas'],
 ];
 const MOBILE = [['', 'Central'], ['partidas', 'Partidas'], ['ranking', 'Ranking'], ['amistosos', 'Amistosos'], ['futebol', 'Futebol'], ['conta', 'Conta']];
+// Telas de um campeonato: mostram a faixa com o evento e a categoria em foco.
+const CHAMPIONSHIP = new Set(['', 'jogadores', 'sorteio', 'chave', 'partidas', 'partida', 'regulamento', 'estatisticas', 'admin', 'avatar']);
 
 function Shell({ route, children }) {
   useSports();
@@ -38,6 +41,7 @@ function Shell({ route, children }) {
         <a class=${"btn sm adm-btn " + (store.admin ? "on" : "")} href="#/admin" title=${store.admin ? "Painel do administrador" : "Entrar como administrador"}>${store.admin ? "Painel ADM" : "ADM"}</a>
       </div>
     </header>
+    ${CHAMPIONSHIP.has(here) && html`<${CatBar} />`}
     ${store.mode === 'local' && html`<p class="local-bar" role="status">Versão online sem servidor: os dados ficam só neste aparelho. Outros celulares, computadores e TVs não veem este campeonato.</p>`}
     ${children}
     <nav class="bottom-nav" aria-label="Atalhos">
@@ -51,12 +55,22 @@ function App() {
   const [, tick] = useState(0);
   useEffect(() => { document.title = 'Tutory Sports'; }, []);
   useEffect(() => { tick(1); }, []);
+  // Link de uma partida ou de um participante abre na categoria certa.
+  useEffect(() => {
+    const [p, id] = route;
+    if (!doc || !id || (p !== 'partida' && p !== 'avatar')) return;
+    const has = (c) => (p === 'partida' ? !!c.matches[id] : c.players.some((x) => x.id === id));
+    if (has(doc)) return;
+    const cat = Object.keys(doc.comps).find((k) => has(doc.comps[k]));
+    if (cat) store.setCat(cat);
+  }, [route.join('/'), doc?.cat]);
   if (!doc) return html`<div class="boot"><div class="boot-ball"></div><p>Carregando a Tutory Sports…</p></div>`;
   const [page, arg] = route;
   let screen;
   if (page === 'telao') return html`<${TelaoPage} /><${Overlays} />`;
   if (page === 'campeao') return html`<${ChampionPage} /><${Overlays} />`;
   switch (page) {
+    case 'campeonatos': screen = html`<${EventsPage} />`; break;
     case 'jogadores': screen = html`<${PlayersPage} />`; break;
     case 'avatar': screen = html`<${EditorPage} key=${arg} id=${arg} />`; break;
     case 'sorteio': screen = html`<${DrawPage} />`; break;
@@ -81,7 +95,8 @@ function App() {
 }
 
 
-store.init().then(() => {
+// tests/app-mock.html define um banco simulado antes de carregar este arquivo: nada vai para o Supabase.
+store.init(globalThis.__tutoryTestCloud ? { cloud: globalThis.__tutoryTestCloud, pollMs: 1e7 } : undefined).then(() => {
   sports.init().catch(() => {});
   document.getElementById('app').textContent = '';
   render(html`<${App} />`, document.getElementById('app'));

@@ -73,14 +73,29 @@ export function canChangeRoster(t) {
   return t.draw.status === 'idle';
 }
 
+// Categoria da pessoa: no masculino e no feminino vale a da competição; no misto, informada na inscrição.
+const GENDER_NAME = { m: "masculino", f: "feminino" };
+function genderFor(t, gender, name) {
+  const g = gender === "m" || gender === "f" ? gender : null;
+  const cat = t.category;
+  if (cat === "m" || cat === "f") {
+    if (g && g !== cat) fail(`${name || "Esta pessoa"} é do ${GENDER_NAME[g]}: esta competição é do ${GENDER_NAME[cat]}.`);
+    return cat;
+  }
+  return g;
+}
+
 export function addPlayer(t, data, avatar = null) {
   if (!canChangeRoster(t)) fail('As inscrições fecham quando o sorteio começa. Refaça o sorteio para alterar a lista.');
   const number = Number(data.number) || nextPlayerNumber(t);
   assertPlayerUnique(t, { ...data, number });
+  const gender = genderFor(t, data.gender, clean(data.name));
   const player = {
     id: uid('p'), name: clean(data.name), nick: clean(data.nick), number,
     seed: null, avatar, createdAt: Date.now(),
   };
+  if (gender) player.gender = gender;
+  if (data.userId) player.userId = data.userId;
   t.players.push(player);
   audit(t, 'player', `Inscrito: ${player.name}`);
   return player;
@@ -94,6 +109,11 @@ export function updatePlayer(t, id, data) {
   p.name = clean(name);
   p.number = number;
   if (data.nick !== undefined) p.nick = clean(data.nick);
+  if (data.gender !== undefined && (data.gender || null) !== (p.gender || null)) {
+    if (!canChangeRoster(t)) fail("A categoria só muda antes do sorteio.");
+    const g = genderFor(t, data.gender, p.name);
+    if (g) p.gender = g; else delete p.gender;
+  }
   if (data.avatar !== undefined) p.avatar = data.avatar;
   if (data.absent !== undefined) {
     if (!canChangeRoster(t)) fail('A seleção de participantes fecha quando o sorteio começa.');
@@ -113,14 +133,17 @@ export function removePlayer(t, id) {
   audit(t, 'player', `Removido: ${p.name}`);
 }
 
-// Importação: uma pessoa por linha, com apelido opcional depois de ";" ou " - ".
+// Importação: uma pessoa por linha, com apelido opcional depois de ";" ou " - " e categoria opcional no fim: (M) ou (F).
 export function importPlayers(t, text, avatarFor = () => null) {
   const added = [], skipped = [];
   for (const raw of String(text).split(/\r?\n/)) {
     if (!raw.trim()) continue;
-    const [name, nick = ''] = raw.split(/\s*[;\t]\s*|\s+-\s+/);
+    const g = raw.match(/\s*\((m|f)\)\s*$/i);
+    const line = g ? raw.slice(0, g.index) : raw;
+    const [name, nick = ''] = line.split(/\s*[;\t]\s*|\s+-\s+/);
     try {
-      added.push(addPlayer(t, { name, nick }, avatarFor(name)));
+      const gender = g ? g[1].toLowerCase() : (t.category === 'm' || t.category === 'f' ? t.category : undefined);
+      added.push(addPlayer(t, { name, nick, gender }, avatarFor(name, gender)));
     } catch (e) {
       if (!(e instanceof UserError)) throw e;
       skipped.push({ line: raw.trim(), reason: e.message });

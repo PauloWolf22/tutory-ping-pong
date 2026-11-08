@@ -1,4 +1,5 @@
 import { html, useState, useEffect, useRef, useDoc, store, Ava, avatarOf, playerById, displayName, useStage, toast } from './lib.js';
+import { CAT_LABEL } from '../core/event.js';
 import * as E from '../core/engine.js';
 import { TableStage, VersusStage } from '../three/stage.js';
 import { DrawShow } from './draw.js';
@@ -13,7 +14,7 @@ const focusMatch = (t) => (t.display.matchId && t.matches[t.display.matchId]) ||
 
 function Brandbar({ t, right }) {
   return html`<header class="tv-bar">
-    <div class="tv-brand"><img src=${t.meta.logo || 'assets/brand/logo-branco.png'} alt="" /><span>TUTORY SPORTS · ${t.meta.name}</span></div>
+    <div class="tv-brand"><img src=${t.meta.logo || 'assets/brand/logo-branco.png'} alt="" /><span>TUTORY SPORTS · ${t.meta.name}${t.cat ? html` <em class="tv-cat">${CAT_LABEL[t.cat].toUpperCase()}</em>` : ''}</span></div>
     <div class="tv-right">${right}</div>
   </header>`;
 }
@@ -106,7 +107,9 @@ function TvDraw({ t }) {
 }
 
 export function TelaoPage() {
-  const t = useDoc();
+  // Telão: a categoria que o administrador está exibindo (ou a fixada no link, ex.: #/telao?cat=f).
+  const fixed = new URLSearchParams(location.hash.split('?')[1] || '').get('cat');
+  const t = useDoc(store.doc?.comps[fixed] ? fixed : store.doc?.active);
   const [sound, setSoundState] = useState(soundOn());
   const [idle, setIdle] = useState(false);
   const mode = t.display.mode;

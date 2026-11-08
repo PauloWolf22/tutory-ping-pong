@@ -2,30 +2,18 @@
 //  - servidor (server/server.ps1): senha verificada no servidor, sincronização entre aparelhos via SSE;
 //  - local (sem servidor, ex.: hospedagem estática): localStorage + BroadcastChannel, só no mesmo navegador.
 // Para trocar por Supabase, ver docs/INTEGRACAO-BANCO.md.
-import { newTournament, UserError } from './engine.js';
+import { UserError } from './engine.js';
+import { normalizeRoot, viewOf, applyView } from './event.js';
 import { SUPABASE } from '../config.js';
 import { createCloud } from './cloud.js';
-import { newFootball, normalizeFootball } from './football.js';
 
 const LOCAL_DOC = 'tutory-pp-doc';
+const LOCAL_CAT = 'tutory-sports-cat';
 const LOCAL_AUTH = 'tutory-pp-auth';
 const SESSION_TOKEN = 'tutory-pp-token';
 const safe = (fn, fallback = null) => { try { return fn(); } catch { return fallback; } };
 
-function withDefaults(doc) {
-  const base = { ...newTournament(), football: newFootball() };
-  if (!doc) return base;
-  return {
-    ...base, ...doc,
-    meta: { ...base.meta, ...doc.meta, ...(/^tutory ping pong championship$/i.test(doc.meta?.name || '') && { name: base.meta.name }) },
-    regulation: { ...base.regulation, ...doc.regulation },
-    scoring: { ...base.scoring, ...doc.scoring },
-    settings: { ...base.settings, ...doc.settings },
-    draw: { ...base.draw, ...doc.draw },
-    display: { ...base.display, ...doc.display },
-    football: normalizeFootball({ ...base.football, ...doc.football }),
-  };
-}
+const withDefaults = (doc) => normalizeRoot(doc);
 
 async function api(path, options = {}, token) {
   const headers = { 'Content-Type': 'application/json' };
@@ -63,6 +51,24 @@ class Store {
     this.sending = false;
     this.dirty = false;
     this.version = 0;
+    this.cat = safe(() => localStorage.getItem(LOCAL_CAT));
+    this._view = null;
+  }
+
+  // Categoria vista neste aparelho (cada pessoa alterna entre masculino e feminino sem mexer na tela dos outros).
+  get catNow() { return this.doc?.comps[this.cat] ? this.cat : this.doc?.active; }
+  setCat(cat) {
+    if (!this.doc?.comps[cat] || cat === this.cat) return;
+    this.cat = cat;
+    safe(() => localStorage.setItem(LOCAL_CAT, cat));
+    this.emit();
+  }
+  // Campeonato da categoria escolhida, no formato que as telas usam (ver event.js).
+  view(cat = this.catNow) {
+    if (!this.doc) return null;
+    const key = this.version + ':' + cat;
+    if (this._view?.key !== key) this._view = { key, v: viewOf(this.doc, cat) };
+    return this._view.v;
   }
 
   subscribe(fn) {
@@ -248,7 +254,17 @@ class Store {
 
   // ------------------------------------------------------------ interface comum
   // Toda alteração passa aqui: aplica numa cópia, só publica se não houver erro.
-  update(fn) {
+  // `fn` recebe o campeonato da categoria escolhida (como sempre foi); `updateRoot` recebe o evento inteiro.
+  update(fn, cat = this.catNow) {
+    return this.updateRoot((root) => {
+      const v = viewOf(root, cat);
+      const result = fn(v);
+      applyView(root, v);
+      return result;
+    });
+  }
+
+  updateRoot(fn) {
     if (!this.admin) throw new UserError('Entre como administrador para alterar o campeonato.');
     const next = structuredClone(this.doc);
     const result = fn(next);
@@ -324,9 +340,11 @@ class Store {
     if (this.mode === 'local') {
       this.admin = true;
       const wasAdmin = !!safe(() => sessionStorage.getItem(SESSION_TOKEN));
-      this.update((t) => {
-        const p = t.players.find((x) => x.id === id);
-        if (p) p.avatar = avatar;
+      this.updateRoot((t) => {
+        for (const c of Object.values(t.comps)) {
+          const p = c.players.find((x) => x.id === id);
+          if (p) p.avatar = avatar;
+        }
       });
       this.admin = wasAdmin;
       return;
@@ -335,8 +353,10 @@ class Store {
       ? { rev: await this.cloud.saveAvatar(this.token, id, code, avatar) }
       : await api('/api/avatar', { method: 'POST', body: JSON.stringify({ id, code, avatar }) }, this.token);
     this.rev = r.rev;
-    const p = this.doc.players.find((x) => x.id === id);
-    if (p) p.avatar = avatar;
+    for (const c of Object.values(this.doc.comps)) {
+      const p = c.players.find((x) => x.id === id);
+      if (p) p.avatar = avatar;
+    }
     this.emit();
   }
 }
