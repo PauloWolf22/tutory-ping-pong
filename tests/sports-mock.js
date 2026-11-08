@@ -110,7 +110,7 @@ export function createMockSportsDb({ adminToken = 'tok' } = {}) {
     async adminPending(t) {
       this.isAdmin(t);
       return {
-        profiles: [...this._p.values()].map((p) => ({ id: p.id, name: p.name, nick: p.nick, gender: p.gender, status: p.status, email: [...this.users.values()].find((u) => u.id === p.id)?.email, created_at: p.created_at })),
+        profiles: [...this._p.values()].map((p) => ({ id: p.id, name: p.name, nick: p.nick, gender: p.gender, status: p.status, email: [...this.users.values()].find((u) => u.id === p.id)?.email, created_at: p.created_at, reset: this.resets.has([...this.users.values()].find((u) => u.id === p.id)?.email) })),
         results: this._r.filter((r) => r.status === 'pending').map((r) => ({ ...r })),
       };
     },
@@ -142,6 +142,16 @@ export function createMockSportsDb({ adminToken = 'tok' } = {}) {
       }
       this.bump();
       return { results: nr, awards: na };
+    },
+    resets: new Set(),
+    async requestReset(email) { if (this.users.has(email.trim().toLowerCase())) this.resets.add(email.trim().toLowerCase()); return { ok: true }; },
+    async adminResetPassword(t, id) {
+      this.isAdmin(t);
+      const u = [...this.users.values()].find((x) => x.id === id);
+      if (!u) err('Conta não encontrada.');
+      u.password = 'prov' + Math.random().toString(36).slice(2, 8);
+      this.resets.delete(u.email);
+      return { password: u.password, email: u.email };
     },
     listen(fn) { this.listener = fn; },
   };

@@ -1,5 +1,5 @@
 // Telas do Tutory Sports: conta, ranking, amistosos e aprovações do administrador.
-import { html, useState, useEffect, useDoc, store, toast, handleError, confirmDialog, fmtDate } from './lib.js';
+import { html, useState, useEffect, useDoc, store, toast, handleError, confirmDialog, openDialog, fmtDate } from './lib.js';
 import * as E from '../core/engine.js';
 import { sports, GENDER_LABEL, STATUS_LABEL, championshipImport } from '../core/sports.js';
 
@@ -52,47 +52,63 @@ const ModalityChips = ({ list, value, onChange }) => html`<div class="mod-chips"
 </div>`;
 
 // ---------------------------------------------------------------- conta
-export function AccountPage() {
+export function AccountPage({ mode }) {
   const s = useSports();
+  const out = !s.user;
   return html`<main class="page narrow">
-    <div class="page-head"><div><span class="overline">Tutory Sports</span><h1>Minha <em>conta</em></h1>
-      <p>Sua conta vale para todas as modalidades: ranking, amistosos e avatar.</p></div></div>
-    <${Gate} s=${s}>${!s.user ? html`<${AuthForms} />` : !s.profile ? html`<${ProfileForm} first />` : html`<${AccountHome} s=${s} />`}<//>
+    <div class="page-head"><div><span class="overline">Tutory Sports</span><h1>${out ? html`Sua <em>conta</em>` : html`Minha <em>conta</em>`}</h1>
+      <p>Uma conta para tudo: avatar, ranking, amistosos e campeonatos.</p></div></div>
+    <${Gate} s=${s}>${out ? html`<${AuthForms} key=${mode || 'in'} initial=${mode === 'criar' ? 'up' : 'in'} />` : !s.profile ? html`<${ProfileForm} first />` : html`<${AccountHome} s=${s} />`}<//>
+    ${out && html`<p class="admin-door"><a href="#/admin">${store.admin ? 'Ir para o painel do administrador' : 'Sou administrador'} →</a></p>`}
   </main>`;
 }
 
-function AuthForms() {
-  const [tab, setTab] = useState('in');
+function AuthForms({ initial = 'in' }) {
+  const [tab, setTab] = useState(initial);
   const [f, setF] = useState({ email: '', password: '', name: '', nick: '', gender: '' });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [sent, setSent] = useState(false);
   const up = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const validEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
   const submit = async (e) => {
     e.preventDefault();
     setErr('');
+    if (!validEmail(f.email)) return setErr('Informe um e-mail válido.');
     if (tab === 'up') {
       if (f.name.trim().length < 2) return setErr('Informe seu nome.');
       if (!f.gender) return setErr('Escolha a categoria.');
     }
-    if (f.password.length < 6) return setErr('A senha precisa ter pelo menos 6 caracteres.');
+    if (tab !== 'reset' && f.password.length < 6) return setErr('A senha precisa ter pelo menos 6 caracteres.');
     setBusy(true);
     try {
-      if (tab === 'in') await sports.signIn(f.email, f.password);
+      if (tab === 'reset') { await sports.need().requestReset(f.email.trim().toLowerCase()); setSent(true); }
+      else if (tab === 'in') { await sports.signIn(f.email, f.password); toast('Bem-vindo de volta.', 'ok'); }
       else { await sports.signUp(f); toast('Conta criada. Agora é só aguardar a aprovação.', 'ok'); }
     } catch (x) { setErr(x.message || 'Não foi possível concluir.'); } finally { setBusy(false); }
   };
-  return html`<form class="glass card form-card" onSubmit=${submit} novalidate>
-    <${Seg} label="Entrar ou criar conta" items=${[['in', 'Entrar'], ['up', 'Criar conta']]} value=${tab} onChange=${(v) => { setTab(v); setErr(''); }} />
-    ${tab === 'up' && html`
-      <label class="field">Nome<input class="input" autocomplete="name" value=${f.name} onInput=${up('name')} maxlength="60" /></label>
-      <label class="field">Apelido (opcional)<input class="input" value=${f.nick} onInput=${up('nick')} maxlength="30" /></label>
-      <div class="field">Categoria<${Seg} label="Categoria" items=${[['m', 'Masculino'], ['f', 'Feminino']]} value=${f.gender} onChange=${(v) => setF({ ...f, gender: v })} /></div>`}
-    <label class="field">E-mail<input class="input" type="email" autocomplete="email" value=${f.email} onInput=${up('email')} /></label>
-    <label class="field">Senha<input class="input" type="password" autocomplete=${tab === 'in' ? 'current-password' : 'new-password'} value=${f.password} onInput=${up('password')} /></label>
-    ${tab === 'up' && html`<p class="muted hint">Mínimo de 6 caracteres. Depois do cadastro, o administrador aprova sua conta.</p>`}
-    ${err && html`<p class="form-error" role="alert">${err}</p>`}
-    <button class="btn primary wide" disabled=${busy}>${busy ? 'Aguarde…' : tab === 'in' ? 'Entrar' : 'Criar conta'}</button>
-  </form>`;
+  const go2 = (v) => { setTab(v); setErr(''); setSent(false); };
+  return html`<div class="auth">
+    ${tab !== 'reset' && html`<div class="auth-choice" role="group" aria-label="Criar conta ou entrar">
+      <button type="button" class=${'auth-btn ' + (tab === 'up' ? 'on' : '')} aria-pressed=${tab === 'up'} onClick=${() => go2('up')}><strong>Criar conta</strong><span>Primeira vez aqui</span></button>
+      <button type="button" class=${'auth-btn ' + (tab === 'in' ? 'on' : '')} aria-pressed=${tab === 'in'} onClick=${() => go2('in')}><strong>Entrar</strong><span>Já tenho conta</span></button>
+    </div>`}
+    <form class="glass card form-card" onSubmit=${submit} novalidate>
+      ${tab === 'reset' && html`<h3>Esqueci a senha</h3><p class="muted">Informe o e-mail da conta. O administrador recebe o pedido e te entrega uma senha provisória; depois você troca em Minha conta.</p>`}
+      ${tab === 'up' && html`
+        <label class="field">Nome<input class="input" autocomplete="name" value=${f.name} onInput=${up('name')} maxlength="60" /></label>
+        <label class="field">Apelido (opcional)<input class="input" value=${f.nick} onInput=${up('nick')} maxlength="30" /></label>
+        <div class="field">Categoria<${Seg} label="Categoria" items=${[['m', 'Masculino'], ['f', 'Feminino']]} value=${f.gender} onChange=${(v) => setF({ ...f, gender: v })} /></div>`}
+      <label class="field">E-mail<input class="input" type="email" inputmode="email" autocomplete="email" value=${f.email} onInput=${up('email')} /></label>
+      ${tab !== 'reset' && html`<label class="field">Senha<input class="input" type="password" autocomplete=${tab === 'in' ? 'current-password' : 'new-password'} value=${f.password} onInput=${up('password')} /></label>`}
+      ${tab === 'up' && html`<p class="muted hint">Senha com no mínimo 6 caracteres. Depois do cadastro, o administrador aprova sua conta.</p>`}
+      ${err && html`<p class="form-error" role="alert">${err}</p>`}
+      ${sent && html`<p class="notice" role="status">Pedido registrado. Avise o administrador para gerar sua senha provisória.</p>`}
+      <button class="btn primary wide" disabled=${busy}>${busy ? 'Aguarde…' : { in: 'Entrar', up: 'Criar conta', reset: 'Pedir nova senha' }[tab]}</button>
+      ${tab === 'in' && html`<button type="button" class="linklike" onClick=${() => go2('reset')}>Esqueci a senha</button>`}
+      ${tab === 'reset' && html`<button type="button" class="linklike" onClick=${() => go2('in')}>Voltar para Entrar</button>`}
+    </form>
+  </div>`;
 }
 
 function ProfileForm({ first = false, done }) {
@@ -282,8 +298,19 @@ export function ApprovalsPage() {
   const byId = new Map(data.profiles.map((x) => [x.id, x]));
   const modMap = new Map((mods.data || []).map((m) => [m.id, m]));
   const run = async (fn, ok) => { try { await sports.admin(fn); if (ok) toast(ok, 'ok'); await sports.loadProfile(); } catch (x) { handleError(x); } };
-  const profiles = data.profiles.filter((p) => filter === 'all' || p.status === filter);
+  const profiles = data.profiles.filter((p) => filter === 'all' || p.status === filter || (filter === 'pending' && p.reset));
   const waiting = data.profiles.filter((p) => p.status === 'pending').length;
+  const resets = data.profiles.filter((p) => p.reset).length;
+  const resetPw = async (p) => {
+    if (!await confirmDialog({ title: `Gerar senha provisória para ${p.name}?`, body: 'A senha atual dessa conta deixa de funcionar. Entregue a nova pessoalmente.', confirmLabel: 'Gerar senha' })) return;
+    run(async (db, tk) => {
+      const r = await db.adminResetPassword(tk, p.id);
+      await openDialog((close) => html`<div class="modal glass" role="dialog" aria-modal="true"><h2>Senha provisória</h2>
+        <div class="body"><p>Entregue para <strong>${p.name}</strong> (${r.email}):</p><p class="temp-pw mono">${r.password}</p>
+        <p class="muted">Ela entra com essa senha e troca em Minha conta. Esta senha não aparece de novo.</p></div>
+        <div class="foot"><button class="btn primary" onClick=${() => close(true)}>Pronto</button></div></div>`);
+    });
+  };
   return html`<main class="page">
     <div class="page-head"><div><span class="overline">Painel</span><h1>Aprovações</h1>
       <p>Contas novas e resultados de amistosos esperam sua decisão. Nada conta no ranking antes disso.</p></div>
@@ -291,13 +318,14 @@ export function ApprovalsPage() {
     <${Gate} s=${s}>
       ${pend.error && html`<p class="notice">${pend.error.message}</p>`}
       <section class="glass card">
-        <div class="card-head"><h3>Contas ${waiting ? html`<span class="chip next">${waiting} aguardando</span>` : ''}</h3>
+        <div class="card-head"><h3>Contas ${waiting ? html`<span class="chip next">${waiting} aguardando</span>` : ''} ${resets ? html`<span class="chip wo">${resets} pediu nova senha</span>` : ''}</h3>
           <${Seg} label="Filtro" items=${[['pending', 'Aguardando'], ['approved', 'Aprovadas'], ['blocked', 'Bloqueadas'], ['all', 'Todas']]} value=${filter} onChange=${setFilter} /></div>
         ${!profiles.length && html`<p class="muted">Nenhuma conta aqui.</p>`}
         <ul class="res-list">${profiles.map((p) => html`<li key=${p.id} class="acct-row">
-          <span><strong>${p.name}</strong>${p.nick ? ` "${p.nick}"` : ''}<br /><span class="muted">${p.email} · ${GENDER_LABEL[p.gender]} · ${fmtDate(Date.parse(p.created_at))}</span></span>
+          <span><strong>${p.name}</strong>${p.nick ? ` "${p.nick}"` : ''}${p.reset ? html` <span class="chip wo">pediu nova senha</span>` : ''}<br /><span class="muted">${p.email} · ${GENDER_LABEL[p.gender]} · ${fmtDate(Date.parse(p.created_at))}</span></span>
           <span class="actions">
             ${p.status !== 'approved' && html`<button class="btn sm primary" onClick=${() => run((db, tk) => db.adminSetStatus(tk, p.id, 'approved'), 'Conta aprovada.')}>Aprovar</button>`}
+            <button class="btn sm" onClick=${() => resetPw(p)}>Senha provisória</button>
             ${p.status !== 'blocked' && html`<button class="btn sm ghost" onClick=${async () => { if (await confirmDialog({ title: `Bloquear ${p.name}?`, body: 'A pessoa sai do ranking e não lança resultados. Dá para desfazer depois.', confirmLabel: 'Bloquear', danger: true })) run((db, tk) => db.adminSetStatus(tk, p.id, 'blocked'), 'Conta bloqueada.'); }}>Bloquear</button>`}
           </span></li>`)}</ul>
       </section>

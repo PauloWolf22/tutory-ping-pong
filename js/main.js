@@ -26,16 +26,16 @@ function Shell({ route, children }) {
   const here = route[0] || '';
   return html`
     <header class="nav">
-      <a class="nav-brand" href="#/" aria-label="Central do campeonato">
-        <img src=${doc.meta.logo || 'assets/brand/logo-branco.png'} alt=${doc.meta.name} />
+      <a class="nav-brand" href="#/" aria-label="Tutory Sports: início">
+        <img src=${doc.meta.logo || 'assets/brand/logo-branco.png'} alt="Tutory Sports" />
       </a>
       <nav class="nav-links" aria-label="Principal">
         ${LINKS.map(([path, label]) => html`<a key=${path} href=${'#/' + path} class=${here === path ? 'on' : ''}>${label}</a>`)}
       </nav>
       <div class="nav-right">
         <a class="btn sm" href="#/telao" target="_blank" rel="noopener">Telão</a>
-        <a class="btn sm hide-sm" href="#/conta">${sports.user ? 'Minha conta' : 'Criar conta'}</a>
-        <a class=${'btn sm ' + (store.admin ? 'primary' : '')} href="#/admin">${store.admin ? 'Painel' : 'Entrar'}</a>
+        <a class=${'btn sm ' + (sports.user ? '' : 'primary')} href="#/conta">${sports.user ? (sports.profile?.nick || 'Minha conta') : 'Entrar'}</a>
+        ${store.admin && html`<a class="btn sm" href="#/admin">Painel</a>`}
       </div>
     </header>
     ${store.mode === 'local' && html`<p class="local-bar" role="status">Versão online sem servidor: os dados ficam só neste aparelho. Outros celulares, computadores e TVs não veem este campeonato.</p>`}
@@ -49,9 +49,9 @@ function App() {
   const route = useRoute();
   const doc = useDoc();
   const [, tick] = useState(0);
-  useEffect(() => { document.title = doc?.meta?.name ? titleCase(doc.meta.name) : 'Campeonato'; }, [doc?.meta?.name]);
+  useEffect(() => { document.title = 'Tutory Sports'; }, []);
   useEffect(() => { tick(1); }, []);
-  if (!doc) return html`<div class="boot"><div class="boot-ball"></div><p>Preparando o campeonato…</p></div>`;
+  if (!doc) return html`<div class="boot"><div class="boot-ball"></div><p>Carregando a Tutory Sports…</p></div>`;
   const [page, arg] = route;
   let screen;
   if (page === 'telao') return html`<${TelaoPage} /><${Overlays} />`;
@@ -66,7 +66,7 @@ function App() {
     case 'futebol': screen = html`<${FootballPage} />`; break;
     case 'ranking': screen = html`<${RankingPage} />`; break;
     case 'amistosos': screen = html`<${FriendliesPage} />`; break;
-    case 'conta': screen = html`<${AccountPage} />`; break;
+    case 'conta': screen = html`<${AccountPage} key=${arg || 'conta'} mode=${arg} />`; break;
     case 'meu-avatar': screen = html`<${MyAvatar} />`; break;
     case 'aprovacoes': screen = html`<${ApprovalsPage} />`; break;
     case 'regulamento': screen = html`<${RegulationPage} />`; break;
@@ -79,7 +79,6 @@ function App() {
     <${Overlays} />`;
 }
 
-const titleCase = (s) => s.toLowerCase().replace(/(^|\s)\p{L}/gu, (m) => m.toUpperCase());
 
 store.init().then(() => {
   sports.init().catch(() => {});

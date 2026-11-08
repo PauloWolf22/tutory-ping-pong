@@ -81,6 +81,8 @@ export async function createSportsDb({ url, anonKey }) {
     adminDecide: (token, id, approve) => rpc('sp_admin_decide', { p_token: token, p_id: id, p_approve: approve }),
     adminDelete: (token, id) => rpc('sp_admin_delete_result', { p_token: token, p_id: id }),
     adminImport: (token, items, awards) => rpc('sp_admin_import', { p_token: token, p_items: items, p_awards: awards }),
+    requestReset: (email) => rpc('sp_request_reset', { p_email: email }),
+    adminResetPassword: (token, id) => rpc('sp_admin_reset_password', { p_token: token, p_id: id }),
     listen(fn) {
       client.channel('sports').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sports_signal' }, () => fn()).subscribe();
     },
@@ -94,6 +96,7 @@ export const sports = {
   ready: false,
   user: null,
   profile: null,
+  people: new Map(), // contas aprovadas, para mostrar o avatar da conta no campeonato
   version: 0,
   listeners: new Set(),
   initPromise: null,
@@ -113,7 +116,8 @@ export const sports = {
         this.user = u;
         await this.loadProfile();
       });
-      this.db.listen?.(() => this.loadProfile());
+      await this.loadPeople();
+      this.db.listen?.(() => { this.loadProfile(); this.loadPeople(); });
       this.ready = true;
       this.emit();
     })().catch((e) => { this.initPromise = null; this.ready = true; this.emit(); throw e; });
@@ -122,6 +126,10 @@ export const sports = {
   async loadProfile() {
     this.profile = this.user ? await this.db.myProfile(this.user.id).catch(() => null) : null;
     this.emit();
+  },
+  async loadPeople() {
+    const list = await this.db.profiles().catch(() => null);
+    if (list) { this.people = new Map(list.map((p) => [p.id, p])); this.emit(); }
   },
   need() {
     if (!this.db) throw new UserError(this.available ? 'Conectando ao banco… tente de novo em instantes.' : 'Contas e ranking funcionam só no site online, com o Supabase.');
@@ -142,7 +150,7 @@ export const sports = {
   },
   async signOut() { await this.need().signOut(); this.user = null; this.profile = null; this.emit(); },
   async saveProfile(p) { this.profile = await this.need().saveProfile(p); this.emit(); },
-  async saveAvatar(avatar) { await this.need().saveAvatar(avatar); await this.loadProfile(); },
+  async saveAvatar(avatar) { await this.need().saveAvatar(avatar); await this.loadProfile(); await this.loadPeople(); },
 
   // Chamadas do administrador: usam a sessão da senha do campeonato.
   admin(fn) {

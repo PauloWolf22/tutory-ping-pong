@@ -28,7 +28,7 @@ export const cryptoRandom = (n) => {
 export function newTournament() {
   return {
     schema: SCHEMA,
-    meta: { name: 'TUTORY PING PONG CHAMPIONSHIP', edition: '1ª edição', logo: null },
+    meta: { name: 'Campeonato de Ping Pong', edition: '1ª edição', logo: null },
     regulation: {
       date: '', time: '', location: '', modality: 'Simples', system: 'Eliminatória simples (mata-mata)',
       scoringText: '', tiebreak: 'Não há empate. Em caso de 10 x 10, o game segue até um jogador abrir dois pontos de diferença.',

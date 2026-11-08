@@ -17,7 +17,7 @@ function withDefaults(doc) {
   if (!doc) return base;
   return {
     ...base, ...doc,
-    meta: { ...base.meta, ...doc.meta },
+    meta: { ...base.meta, ...doc.meta, ...(/^tutory ping pong championship$/i.test(doc.meta?.name || '') && { name: base.meta.name }) },
     regulation: { ...base.regulation, ...doc.regulation },
     scoring: { ...base.scoring, ...doc.scoring },
     settings: { ...base.settings, ...doc.settings },
