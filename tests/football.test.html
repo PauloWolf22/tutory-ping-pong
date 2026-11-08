@@ -168,7 +168,7 @@ test('Desfazer restaura estado completo, várias vezes', () => {
   F.registerWinner(f, 'A');
   const s1 = JSON.stringify(f.session);
   F.registerWinner(f, 'B');
-  F.removePlayer(f, f.session.queue[0]);
+  F.withdraw(f, f.session.queue[0]);
   F.undo(f);
   F.undo(f);
   eq(JSON.stringify(f.session), s1);
@@ -194,7 +194,7 @@ test('Histórico registra quem venceu, quem saiu e quem entrou', () => {
   F.startSession(f, seeded(12));
   const h = F.registerWinner(f, 'B');
   eq(h.no, 1); eq(h.winner, 'B'); eq(h.loser, 'A'); eq(h.out.length, 5); eq(h.entering.length, 5);
-  eq(f.session.gameNo, 2); eq(f.session.history[0].no, 1);
+  eq(f.session.gameNo, 2); eq(f.session.rounds[0].no, 1); eq(f.session.rounds[0].names.A.length, 5);
 });
 
 test('Reiniciar mantém nomes; nova terça arquiva e limpa', () => {
@@ -218,6 +218,152 @@ test('Sobrevive a serialização (persistência)', () => {
   healthy(copy);
   F.undo(copy);
   eq(JSON.stringify(copy.session), JSON.stringify(f.session));
+});
+
+// ------------------------------------------------------------------ FIFO, desistência, rodadas, financeiro
+test('FIFO: depois dos 10 sorteados, a fila segue a ordem de chegada', () => {
+  for (let i = 1; i <= 30; i++) {
+    const f = make(23);
+    F.startSession(f, seeded(i));
+    eq(names(f, f.session.queue), Array.from({ length: 13 }, (_, k) => `J${String(k + 11).padStart(2, '0')}`));
+  }
+});
+
+test('Desistência em campo: nome riscado, primeiro da fila entra na mesma vaga, resto da fila mantém a ordem', () => {
+  const f = make(17);
+  F.startSession(f, seeded(21));
+  const out = f.session.teams.B[3], q = [...f.session.queue];
+  const sub = F.withdraw(f, out);
+  ok(f.players.find((p) => p.id === out).quit, 'marcado como desistente');
+  ok(f.players.some((p) => p.id === out), 'não foi excluído');
+  eq(f.session.teams.B[3], q[0], 'primeiro elegível ocupa a vaga');
+  eq(f.session.queue, q.slice(1), 'demais permanecem na ordem');
+  eq(sub.in, q[0]); eq(sub.out, out); eq(sub.team, 'B');
+  healthy(f);
+  // não volta em escalações futuras
+  for (let g = 0; g < 40; g++) { F.registerWinner(f, g % 3 ? 'A' : 'B'); ok(!F.teamOf(f, out) && !f.session.queue.includes(out)); healthy(f); }
+});
+
+test('Desistência registra a substituição na rodada e não muda o resultado', () => {
+  const f = make(13);
+  F.startSession(f, seeded(22));
+  const out = f.session.teams.A[0], enters = f.session.queue[0];
+  F.withdraw(f, out);
+  const r = F.registerWinner(f, 'A');
+  eq(r.winner, 'A'); eq(r.subs.length, 1); eq(r.subs[0].outName, F.nameOf(f, out)); eq(r.subs[0].inName, F.nameOf(f, enters));
+  ok(r.teams.A.includes(enters) && !r.teams.A.includes(out), 'fotografia da rodada mostra quem terminou o jogo');
+});
+
+test('Desistência na fila: sai da fila sem mexer nos times', () => {
+  const f = make(16);
+  F.startSession(f, seeded(23));
+  const A = [...f.session.teams.A], B = [...f.session.teams.B], id = f.session.queue[2];
+  eq(F.withdraw(f, id), null);
+  eq(f.session.teams.A, A); eq(f.session.teams.B, B); ok(!f.session.queue.includes(id));
+  healthy(f);
+  throws(() => F.withdraw(f, id), /já está/);
+});
+
+test('Desistência preserva rodadas anteriores e pode ser desfeita ou revertida', () => {
+  const f = make(15);
+  F.startSession(f, seeded(24));
+  F.registerWinner(f, 'A');
+  const before = JSON.stringify(f.session.rounds);
+  const id = f.session.teams.A[1];
+  F.withdraw(f, id);
+  eq(JSON.stringify(f.session.rounds), before, 'rodadas intactas');
+  eq(F.stats(f).find((r) => r.id === id).games, 1, 'histórico do desistente mantido');
+  F.rejoin(f, id);
+  eq(f.session.queue.at(-1), id, 'volta no fim da fila');
+  healthy(f);
+  F.undo(f); F.undo(f);
+  eq(F.teamOf(f, id), 'A', 'desfazer devolve o estado anterior');
+  healthy(f);
+});
+
+test('Quem já jogou não pode ser excluído, só marcado como desistente', () => {
+  const f = make(12);
+  F.startSession(f, seeded(25));
+  F.registerWinner(f, 'B');
+  throws(() => F.removePlayer(f, f.session.teams.B[0]), /não quer mais jogar/);
+});
+
+test('Rodadas: ordem cronológica, novas abaixo das antigas, fotografia dos dois times', () => {
+  const f = make(18);
+  F.startSession(f, seeded(26));
+  const snaps = [];
+  for (let g = 0; g < 6; g++) {
+    const A = [...f.session.teams.A], B = [...f.session.teams.B];
+    F.registerWinner(f, g % 2 ? 'B' : 'A');
+    snaps.push(JSON.stringify(f.session.rounds));
+    eq(f.session.rounds.at(-1).teams, { A, B });
+    eq(f.session.rounds.map((r) => r.no), Array.from({ length: g + 1 }, (_, k) => k + 1));
+  }
+  for (let i = 0; i < snaps.length - 1; i++) ok(snaps.at(-1).startsWith(snaps[i].slice(0, -1)), 'rodadas antigas não mudam');
+});
+
+test('Refazer sorteio e reiniciar sessão preservam rodadas', () => {
+  const f = make(14);
+  F.startSession(f, seeded(27));
+  F.registerWinner(f, 'A'); F.registerWinner(f, 'A');
+  F.startSession(f, seeded(28));
+  eq(f.session.rounds.length, 2); eq(f.session.gameNo, 3);
+  F.resetSession(f);
+  eq(f.archive.length, 1); eq(f.archive[0].games.length, 2); eq(f.archive[0].players.length, 14);
+});
+
+test('Estatísticas: jogos, vitórias, derrotas, quem ainda não jogou e desistentes', () => {
+  const f = make(16);
+  F.startSession(f, seeded(29));
+  const A = [...f.session.teams.A], B = [...f.session.teams.B], waiting = f.session.queue.at(-1);
+  F.registerWinner(f, 'A');
+  const st = Object.fromEntries(F.stats(f).map((r) => [r.id, r]));
+  for (const id of A) { eq(st[id].games, 1); eq(st[id].wins, 1); }
+  for (const id of B) { eq(st[id].losses, 1); eq(st[id].teams[0].team, 'B'); }
+  eq(st[waiting].games, 0); eq(st[waiting].state, 'ainda não jogou');
+  F.withdraw(f, A[0]);
+  eq(F.stats(f).find((r) => r.id === A[0]).state, 'desistiu');
+  eq(F.stats(f).find((r) => r.id === A[0]).subOut, 1);
+});
+
+test('Financeiro: R$ 180/h × 2 h por 23 pessoas, soma exata em centavos', () => {
+  const f = make(23);
+  F.setFinance(f, { pricePerHour: 180, hours: 2 });
+  const s = F.financeSummary(f);
+  eq(s.total, 36000); eq(s.count, 23);
+  eq(s.rows.reduce((a, r) => a + r.due, 0), 36000, 'soma das cotas = total');
+  ok(s.rows.every((r) => r.due === 1565 || r.due === 1566), 'cotas de R$ 15,65 ou 15,66');
+  eq(s.pendingCount, 23); eq(s.received, 0);
+  F.setPaid(f, f.players[0].id, true); F.setPaid(f, f.players[1].id, true);
+  const t = F.financeSummary(f);
+  eq(t.paidCount, 2); eq(t.received, t.rows[0].due + t.rows[1].due); eq(t.pending, 36000 - t.received);
+  F.setPaid(f, f.players[1].id, false);
+  eq(F.financeSummary(f).paidCount, 1, 'correção de marcação');
+  ok(f.finance.log.length >= 4, 'histórico de alterações');
+  throws(() => F.setSplit(f, f.players[0].id, false), /já pagou/);
+  F.setSplit(f, f.players[5].id, false);
+  eq(F.financeSummary(f).count, 22);
+  throws(() => F.setPaid(f, f.players[5].id, true), /rateio/);
+  throws(() => F.setFinance(f, { pricePerHour: -1, hours: 2 }), /preço/);
+});
+
+test('Financeiro sobrevive a serialização e nova terça arquiva os pagamentos', () => {
+  const f = make(12);
+  F.setFinance(f, { pricePerHour: 150, hours: 1.5 });
+  F.setPaid(f, f.players[0].id, true);
+  const copy = F.normalizeFootball(JSON.parse(JSON.stringify(f)));
+  eq(F.financeSummary(copy), F.financeSummary(f));
+  F.startSession(copy, seeded(30)); F.registerWinner(copy, 'A');
+  F.newTuesday(copy);
+  eq(copy.archive[0].finance.paidCount, 1); eq(copy.finance.pricePerHour, 150); eq(copy.finance.payers, {});
+});
+
+test('Documento antigo (histórico invertido) vira rodadas na ordem certa', () => {
+  const old = { players: [], undo: [{ label: 'x', players: [], session: { teams: { A: [], B: [] }, queue: [], history: [{ no: 2 }, { no: 1 }] } }], archive: [], visible: false,
+    session: { teams: { A: [], B: [] }, queue: [], gameNo: 3, history: [{ no: 2 }, { no: 1 }] } };
+  const f = F.normalizeFootball(old);
+  eq(f.session.rounds.map((r) => r.no), [1, 2]); eq(f.session.history, undefined); eq(f.undo[0].session.rounds.length, 2);
+  eq(F.financeSummary(f).total, 0);
 });
 
 document.getElementById('sum').textContent = `${pass} passaram · ${failed} falharam`;
