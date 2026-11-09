@@ -1,4 +1,5 @@
 import { html, useEffect, useRef, useState, useDoc, Ava, store, avatarOf, playerById, displayName } from './lib.js';
+import { Intro, People, Championships, HowTo, RulesCard } from './home-sections.js';
 import * as E from '../core/engine.js';
 import { avatarFromName, webglAvailable } from '../three/avatars.js';
 
@@ -106,6 +107,13 @@ export function HomePage() {
       ${last && html`<div class="glass card"><${Versus} t=${t} m=${last} size=${84} label="Último resultado" /></div>`}
       ${!next && !last && !champion && html`<div class="glass card home-wait"><span class="overline">Próximo confronto</span><h3>Sai no sorteio</h3><p class="muted">${t.players.length < 2 ? 'Inscreva os participantes para liberar o sorteio.' : `${t.players.length} participantes prontos. ${E.formatSummary(E.eligiblePlayers(t).length, t.settings.oddMode).text}`}</p></div>`}
       ${status.key !== 'finished' && html`<div class="glass card"><span class="overline">Como funciona</span><${FlowSteps} t=${t} /></div>`}
+    </div>
+    <div class="page home-more">
+      <${Intro} />
+      <${Championships} t=${t} />
+      <${People} t=${t} />
+      <${HowTo} />
+      <${RulesCard} t=${t} />
     </div>
     ${!webglAvailable() && html`<p class="muted" style="text-align:center;padding-bottom:40px">Este aparelho não oferece WebGL. As cenas 3D foram trocadas por retratos com as iniciais.</p>`}
   </main>`;
