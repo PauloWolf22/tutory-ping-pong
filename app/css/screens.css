@@ -836,3 +836,55 @@ a.bk-card:hover { border-color: var(--beam); }
 @media (max-width: 560px) { .live-pill { padding: 6px 9px; font-size: 10.5px; } }
 .chip.third, .chip.cons { color: var(--gold-soft); border-color: rgba(201, 169, 110, 0.4); background: rgba(201, 169, 110, 0.08); }
 .chip.fourth { color: var(--ice); }
+
+/* ------------------------------------------------------------ fase 7: seções da home */
+.home-more { padding-top: 8px; display: grid; gap: clamp(40px, 6vw, 72px); }
+.home-sec { position: relative; }
+.sec-head { max-width: 760px; margin-bottom: 20px; }
+.sec-head h2 { font-size: clamp(26px, 3.4vw, 40px); margin-top: 6px; }
+.sec-head h2 em { color: var(--beam); font-style: normal; }
+.sec-head p { margin-top: 10px; line-height: 1.6; }
+.sec-head.row { max-width: none; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px 20px; flex-wrap: wrap; }
+.intro { overflow: hidden; padding: clamp(8px, 2vw, 20px) 0; }
+.brain-bg { position: absolute; right: -6%; top: 50%; width: min(560px, 62vw); transform: translateY(-50%); opacity: 0.045; pointer-events: none; user-select: none; filter: drop-shadow(0 0 40px rgba(59, 123, 245, 0.6)); }
+.intro .sec-head, .intro .fronts { position: relative; }
+.fronts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+.front { display: grid; gap: 10px; align-content: start; padding: 20px; color: inherit; transition: border-color 0.25s var(--ease), transform 0.25s var(--ease); }
+.front:hover { border-color: rgba(59, 123, 245, 0.45); transform: translateY(-2px); }
+.front h3 { font-size: 18px; }
+.front p { color: var(--muted); font-size: 14px; line-height: 1.55; }
+.front-cta { color: var(--beam-soft); font-weight: 700; font-size: 13.5px; margin-top: 4px; }
+.people-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 14px 10px; }
+.person { display: grid; justify-items: center; gap: 6px; text-align: center; color: inherit; }
+.person span { font-weight: 700; font-size: 13px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person small { color: var(--muted); font-size: 11px; }
+.person.more { align-content: center; min-height: 100px; border-radius: var(--r); border: 1px dashed var(--line-strong); }
+.person.more b { font-size: 22px; font-family: var(--font-title); }
+.hc-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.hc-event { padding: 20px; display: grid; gap: 6px; align-content: start; }
+.hc-event.current { border-color: rgba(126, 166, 248, 0.32); }
+.hc-event h3 { font-size: 20px; }
+.hc-cats { display: grid; gap: 12px; margin-top: 10px; }
+.hc-cat { padding: 12px; border-radius: var(--r); background: rgba(2, 3, 8, 0.35); border: 1px solid var(--line); display: grid; gap: 10px; }
+.hc-cat-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+.hc-cat-head .cat-tag { padding: 6px 10px; font-size: 10px; }
+.hc-podium { list-style: none; display: grid; gap: 8px; }
+.hc-podium li { display: flex; align-items: center; gap: 10px; }
+.hc-podium li span { display: grid; line-height: 1.2; font-weight: 700; }
+.hc-podium small { font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.hc-podium li.gold small { color: var(--gold); }
+.hc-wait { font-size: 13px; }
+.howto { list-style: none; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+.howto li { padding: 20px; display: grid; gap: 10px; align-content: start; }
+.howto i { font-style: normal; font: 800 13px/1 var(--font); letter-spacing: 0.16em; color: var(--beam-soft); }
+.howto h3 { font-size: 18px; }
+.howto p { color: var(--muted); font-size: 14px; line-height: 1.55; }
+.howto .btn { justify-self: start; margin-top: 4px; }
+.rules-card { display: flex; justify-content: space-between; align-items: flex-end; gap: 18px; flex-wrap: wrap; padding: clamp(20px, 3vw, 30px); color: inherit; }
+.rules-card h2 { font-size: clamp(22px, 3vw, 30px); margin: 6px 0 12px; }
+.rules-card dl { display: grid; gap: 8px; max-width: 760px; }
+.rules-card dl div { display: grid; grid-template-columns: 110px 1fr; gap: 10px; font-size: 14px; }
+.rules-card dt { color: var(--muted); font-weight: 700; }
+.rules-card:hover { border-color: var(--line-strong); }
+@media (max-width: 560px) { .rules-card dl div { grid-template-columns: 1fr; gap: 2px; } .people-strip { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); } }
+.hc-podium, .ev-podium, .howto, .point-log ol { padding: 0; margin: 0; }

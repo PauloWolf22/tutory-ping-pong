@@ -281,3 +281,25 @@ Tudo em `supabase/sports.sql`, que pode ser rodado de novo sem perder dados. **R
     - pausa, correção e histórico.
   - Regressão: motor 52, categorias 11, futebol 40, Store 13 e esportes 27. Total de 192 testes, todos aprovados.
   - Fluxo feito na tela, sobre banco simulado (`mock.html`).
+
+## Fase 7: home e identidade (08/11/2026)
+- **Vídeo esportivo:** já entregue antes (painel 16:9 à direita, toca sempre, com pausa).
+- **Novas seções abaixo do vídeo** (`ui/home-sections.js`). Todas usam só dados reais e, sem dados, explicam o que falta.
+  - **Apresentação:** as três frentes (Tutory Sports, Tutory Gaming, Tutory Jiu-Jitsu) e o futebol de terça, cada uma com o link da área.
+  - **Campeonatos recentes e anteriores:**
+    - evento atual e os 3 últimos encerrados;
+    - modalidade, formato, data e número de resultados;
+    - por categoria: campeão, vice e 3º lugar com avatar.
+  - **Participantes:** as contas aprovadas, com avatar e categoria. Enquanto o banco carrega, aparecem os inscritos do evento.
+  - **Como participar**, com o botão de cada passo:
+    - criar conta;
+    - montar o avatar;
+    - participar (campeonato pelo ADM, amistoso lançado pela própria pessoa);
+    - acompanhar (ao vivo, ranking).
+  - **Regulamento:** resumo da pontuação, do sistema (com 3º lugar e repescagem, quando ligados) e do WO, com o link para o completo.
+- **Cérebro da identidade Tutory:**
+  - Arquivo oficial `LOGO TUTORY/CEREBRO_branco.png`, reduzido para 720 px (33 KB): `assets/brand/cerebro-branco.png`.
+  - Entra como marca d'água sutil (4,5% de opacidade) atrás da apresentação.
+  - A logo continua intacta.
+- **Testado:** computador (1280 px) e celular (375 px, sem rolagem lateral), com um evento encerrado no histórico. A regressão continua com 192 testes, todos aprovados.
+- **Fica para a fase 8:** regulamentos por modalidade, com versões.
