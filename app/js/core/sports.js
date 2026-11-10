@@ -93,6 +93,30 @@ export async function createSportsDb({ url, anonKey }) {
     finSave: (token, rev, data) => rpc('sp_fin_save', { p_token: token, p_rev: rev, p_data: data }),
     requestReset: (email) => rpc('sp_request_reset', { p_email: email }),
     adminResetPassword: (token, id) => rpc('sp_admin_reset_password', { p_token: token, p_id: id }),
+    // fase 8 (supabase/fase8.sql): agenda, notificações, comunidade e regulamentos
+    agenda: () => guard(() => client.from('agenda').select('*').gte('starts_at', new Date(Date.now() - 30 * 864e5).toISOString()).order('starts_at').limit(200)),
+    rsvps: () => guard(() => client.from('agenda_rsvp').select('*')),
+    agendaAdminSave: (token, item) => rpc('sp_agenda_admin_save', { p_token: token, p_item: item }),
+    agendaAdminCancel: (token, id) => rpc('sp_agenda_admin_cancel', { p_token: token, p_id: id }),
+    agendaPropose: (a) => rpc('sp_agenda_propose', { p_modality: a.modality, p_opponent: a.opponent, p_starts_at: a.startsAt, p_location: a.location || null, p_notes: a.notes || null }),
+    agendaAnswer: (id, accept) => rpc('sp_agenda_answer', { p_id: id, p_accept: accept }),
+    agendaCancelMine: (id) => rpc('sp_agenda_cancel_mine', { p_id: id }),
+    agendaRsvp: (id, answer) => rpc('sp_agenda_rsvp', { p_id: id, p_answer: answer }),
+    notifications: () => guard(() => client.from('notifications').select('*').order('created_at', { ascending: false }).limit(50)),
+    notificationsRead: (ids) => rpc('sp_notifications_read', { p_ids: ids || null }),
+    comments: (target) => guard(() => client.from('comments').select('*').eq('target', target).order('created_at').limit(300)),
+    reactions: (target) => guard(() => client.from('reactions').select('*').eq('target', target)),
+    comment: (target, body, parent) => rpc('sp_comment', { p_target: target, p_body: body, p_parent: parent || null }),
+    commentDelete: (id) => rpc('sp_comment_delete', { p_id: id }),
+    react: (target, emoji) => rpc('sp_react', { p_target: target, p_emoji: emoji }),
+    reportComment: (id, reason) => rpc('sp_report_comment', { p_id: id, p_reason: reason || null }),
+    adminReports: (token) => rpc('sp_admin_reports', { p_token: token }),
+    adminComment: (token, id, action) => rpc('sp_admin_comment', { p_token: token, p_id: id, p_action: action }),
+    adminMute: (token, user, mute) => rpc('sp_admin_mute', { p_token: token, p_user: user, p_mute: mute }),
+    regulations: () => guard(() => client.from('regulations').select('*').order('version', { ascending: false })),
+    adminRegulations: (token, modality) => rpc('sp_admin_regulations', { p_token: token, p_modality: modality }),
+    adminRegulationSave: (token, r) => rpc('sp_admin_regulation_save', { p_token: token, p_r: r }),
+    adminRegulationPublish: (token, id) => rpc('sp_admin_regulation_publish', { p_token: token, p_id: id }),
     listen(fn) {
       client.channel('sports').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sports_signal' }, () => fn()).subscribe();
     },
@@ -136,6 +160,26 @@ export const sports = {
   async loadProfile() {
     this.profile = this.user ? await this.db.myProfile(this.user.id).catch(() => null) : null;
     this.emit();
+    this.loadNotes();
+  },
+  // Notificações da conta (supabase/fase8.sql). Sem a tabela ainda criada, a central fica só com o que vem do campeonato.
+  notes: [],
+  notesReady: false,
+  onNewNote: null,
+  async loadNotes() {
+    if (!this.user || !this.db?.notifications) { this.notes = []; this.notesReady = false; this.emit(); return; }
+    const prev = new Set(this.notes.map((n) => n.id));
+    const list = await this.db.notifications().catch(() => null);
+    if (!list) { this.notesReady = false; this.emit(); return; }
+    const fresh = this.notesReady ? list.filter((n) => !n.read_at && !prev.has(n.id)) : [];
+    this.notes = list;
+    this.notesReady = true;
+    this.emit();
+    fresh.forEach((n) => this.onNewNote?.(n));
+  },
+  async readNotes(ids = null) {
+    await this.need().notificationsRead(ids);
+    await this.loadNotes();
   },
   async loadPeople() {
     const list = await this.db.profiles().catch(() => null);

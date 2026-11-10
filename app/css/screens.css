@@ -888,3 +888,77 @@ a.bk-card:hover { border-color: var(--beam); }
 .rules-card:hover { border-color: var(--line-strong); }
 @media (max-width: 560px) { .rules-card dl div { grid-template-columns: 1fr; gap: 2px; } .people-strip { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); } }
 .hc-podium, .ev-podium, .howto, .point-log ol { padding: 0; margin: 0; }
+
+/* ------------------------------------------------------------ fase 8: avisos, agenda, comunidade, regulamentos */
+.bell-wrap { position: relative; }
+.bell { position: relative; width: 36px; padding: 0; justify-content: center; }
+.bell b { position: absolute; top: -5px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: #ff4b4b; color: #fff; font: 800 10.5px/18px var(--font); text-align: center; box-shadow: 0 0 0 2px var(--abyss); }
+.bell.has { border-color: rgba(255, 107, 107, 0.45); }
+.bell-panel { position: absolute; right: 0; top: calc(100% + 10px); z-index: 80; width: min(380px, calc(100vw - 24px)); max-height: min(70vh, 560px); overflow-y: auto; padding: 12px; display: grid; gap: 6px; background: var(--glass-strong); }
+.bp-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 4px 8px; border-bottom: 1px solid var(--line); }
+.bp-sub { margin: 8px 4px 2px; }
+.bp-item { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid transparent; background: rgba(2, 3, 8, 0.35); color: inherit; font: inherit; cursor: pointer; }
+.bp-item:hover { border-color: var(--line-strong); }
+.bp-item b { font-size: 13.5px; }
+.bp-item span { color: var(--muted); font-size: 12.5px; }
+.bp-item small { color: var(--faint); font-size: 11px; }
+.bp-item.unread { border-color: rgba(59, 123, 245, 0.35); background: rgba(0, 64, 200, 0.12); }
+.bp-item.hot { border-color: rgba(255, 107, 107, 0.45); background: rgba(255, 75, 75, 0.1); }
+.bp-empty { padding: 10px 4px; font-size: 13px; }
+.bp-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; }
+@media (max-width: 480px) { .bell-panel { position: fixed; left: 12px; right: 12px; top: 64px; width: auto; } }
+
+.agenda-page .ag-day, .ag-invites { display: grid; gap: 10px; margin-bottom: 22px; }
+.ag-day .round-title, .ag-invites .round-title { text-transform: capitalize; }
+.ag-item { display: grid; grid-template-columns: 74px 1fr; gap: 14px; padding: 16px; }
+.ag-item.mine { border-color: rgba(59, 123, 245, 0.35); }
+.ag-item.cancelled, .ag-item.declined { opacity: 0.55; }
+.ag-item.cancelled h3 { text-decoration: line-through; }
+.ag-item.champ { border-color: rgba(201, 169, 110, 0.35); }
+.ag-time { font: 800 20px/1 var(--font-title); color: var(--white); padding-top: 4px; }
+.ag-body { display: grid; gap: 6px; }
+.ag-body h3 { font-size: 17px; }
+.ag-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.ag-notes { font-size: 13.5px; color: var(--ice); background: rgba(2, 3, 8, 0.35); padding: 8px 10px; border-radius: 10px; }
+.ag-rsvp { font-size: 12.5px; }
+.ag-past { display: grid; gap: 4px; margin-top: 10px; font-size: 13px; }
+.pick-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 190px; overflow-y: auto; margin-top: 8px; }
+.pick-list .chip-radio { padding: 7px 12px; font-size: 13px; }
+@media (max-width: 560px) { .ag-item { grid-template-columns: 1fr; gap: 6px; } }
+
+.comments { margin-top: 18px; }
+.comments .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.comments h2 small { font-size: 14px; }
+.reactions { display: flex; gap: 6px; flex-wrap: wrap; }
+.react { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 99px; border: 1px solid var(--line); background: rgba(2, 3, 8, 0.35); color: inherit; font-size: 15px; cursor: pointer; }
+.react b { font: 700 12px/1 var(--font); color: var(--ice); }
+.react.on { border-color: var(--beam); background: rgba(0, 64, 200, 0.2); }
+.react:disabled { cursor: default; opacity: 0.75; }
+.cmt-form { display: grid; gap: 8px; margin-bottom: 14px; }
+.cmt-send { display: flex; justify-content: space-between; align-items: center; }
+.cmt-list, .cmt-replies { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.cmt-replies { margin-top: 10px; padding-left: 4px; border-left: 2px solid var(--line); }
+.cmt { display: grid; grid-template-columns: 34px 1fr; gap: 10px; }
+.cmt.hidden { opacity: 0.6; }
+.cmt-ghost { display: block; width: 34px; height: 34px; border-radius: 50%; background: var(--glass-hi); }
+.cmt-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13.5px; }
+.cmt-head time { font-size: 11.5px; }
+.cmt-body { margin-top: 2px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; }
+.cmt-actions { display: flex; gap: 12px; margin-top: 4px; }
+.link-btn { border: 0; background: none; padding: 0; color: var(--beam-soft); font: 600 12.5px var(--font); cursor: pointer; }
+.link-btn:hover { text-decoration: underline; }
+
+.reg-tabs { margin-bottom: 18px; flex-wrap: wrap; }
+.rules { display: grid; gap: 14px; }
+.rules-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.rules-head h2 { font-size: clamp(22px, 3vw, 30px); margin-top: 4px; }
+.rules-cols { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); }
+.rules-cols ul { margin: 10px 0 0; padding-left: 18px; display: grid; gap: 8px; line-height: 1.55; font-size: 14.5px; }
+.rules-cols p { margin-top: 10px; line-height: 1.55; }
+.rules-official { border-color: rgba(126, 166, 248, 0.3); }
+.rules-internal { border-color: rgba(201, 169, 110, 0.3); }
+.rules-internal .overline { color: var(--gold); }
+.rules-src { font-size: 13px; }
+.field.inline { display: flex; align-items: center; gap: 8px; }
+.input.tall { min-height: 180px; }
+.bell-panel { background: rgba(8, 13, 26, 0.97); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.9); }

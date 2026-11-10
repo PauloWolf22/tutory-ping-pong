@@ -3,6 +3,7 @@ import { html, useState, useEffect, useDoc, store, toast, handleError, confirmDi
 import * as E from '../core/engine.js';
 import { sports, GENDER_LABEL, STATUS_LABEL, championshipImport, rulesFor, BELTS, POINT_FIELDS, CATEGORY_LABEL } from '../core/sports.js';
 
+import { Moderation } from './community.js';
 // ---------------------------------------------------------------- estado e dados
 export function useSports() {
   const [, force] = useState(0);
@@ -15,7 +16,7 @@ export function useSports() {
 }
 
 // Carrega dados do banco e recarrega quando algo muda (aviso do Realtime chega como nova versão).
-function useQuery(fn, deps) {
+export function useQuery(fn, deps) {
   const [state, set] = useState({ data: null, error: null, loading: true });
   useEffect(() => {
     let live = true;
@@ -34,7 +35,7 @@ export const PAva = ({ p, size = 40 }) => html`<span class="ava" style=${`width:
 </span>`;
 const who = (p) => (p ? p.nick || p.name : 'Conta removida');
 
-function Gate({ s, children, needApproval = false }) {
+export function Gate({ s, children, needApproval = false }) {
   if (!s.available) return html`<div class="glass card empty"><h3>Disponível no site online</h3><p class="muted">Contas, ranking e amistosos usam o banco do Supabase. Abra o endereço público do app.</p></div>`;
   if (!s.ready) return html`<div class="skeleton" style="height:220px;border-radius:20px"></div>`;
   if (!s.db) return html`<div class="glass card empty"><h3>Sem conexão com o banco</h3><p class="muted">Confira a internet e recarregue a página.</p></div>`;
@@ -43,7 +44,7 @@ function Gate({ s, children, needApproval = false }) {
   return children;
 }
 
-const Seg = ({ items, value, onChange, label }) => html`<div class="seg" role="group" aria-label=${label}>
+export const Seg = ({ items, value, onChange, label }) => html`<div class="seg" role="group" aria-label=${label}>
   ${items.map(([k, l]) => html`<button key=${k} type="button" class=${value === k ? 'on' : ''} aria-pressed=${value === k} onClick=${() => onChange(k)}>${l}</button>`)}
 </div>`;
 
@@ -387,6 +388,7 @@ export function ApprovalsPage() {
             <button class="btn sm primary" onClick=${() => run((db, tk) => db.adminDecide(tk, r.id, true), 'Resultado aprovado.')}>Aprovar</button>
             <button class="btn sm ghost" onClick=${() => run((db, tk) => db.adminDecide(tk, r.id, false), 'Resultado recusado.')}>Recusar</button></span>`} />
       </section>
+      <${Moderation} />
       <${ChampionshipLink} t=${t} mods=${mods.data || []} accounts=${data.profiles.filter((p) => p.status === 'approved')} run=${run} />
     <//>
   </main>`;

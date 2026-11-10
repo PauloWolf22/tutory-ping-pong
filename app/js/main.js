@@ -1,6 +1,8 @@
 import { html, render, store, useDoc, useRoute, Overlays, useState, useEffect, CatBar } from './ui/lib.js';
 import { EventsPage } from './ui/events.js';
 import { LivePage, liveAcross } from './ui/live.js';
+import { AgendaPage } from './ui/agenda.js';
+import { Bell } from './ui/notify.js';
 import { HomePage } from './ui/home.js';
 import { PlayersPage } from './ui/players.js';
 import { EditorPage } from './ui/editor.js';
@@ -17,8 +19,9 @@ import { AccountPage, RankingPage, FriendliesPage, ApprovalsPage, PointsPage, us
 import { sports } from './core/sports.js';
 
 const LINKS = [
-  ['', 'Central'], ['jogadores', 'Jogadores'], ['sorteio', 'Sorteio'], ['chave', 'Chave'], ['partidas', 'Partidas'],
-  ['campeonatos', 'Campeonatos'], ['ranking', 'Ranking'], ['amistosos', 'Amistosos'], ['futebol', 'Futebol'], ['regulamento', 'Regulamento'], ['estatisticas', 'Estatísticas'],
+  // Sorteio e Chave saem do topo (cabem na Central, em Campeonatos e no painel ADM): o menu precisa caber em 1280 px
+  ['', 'Central'], ['jogadores', 'Jogadores'], ['partidas', 'Partidas'],
+  ['campeonatos', 'Campeonatos'], ['agenda', 'Agenda'], ['ranking', 'Ranking'], ['amistosos', 'Amistosos'], ['futebol', 'Futebol'], ['regulamento', 'Regras'], ['estatisticas', 'Estatísticas'],
 ];
 const MOBILE = [['', 'Central'], ['partidas', 'Partidas'], ['ranking', 'Ranking'], ['amistosos', 'Amistosos'], ['futebol', 'Futebol'], ['conta', 'Conta']];
 // Telas de um campeonato: mostram a faixa com o evento e a categoria em foco.
@@ -38,6 +41,7 @@ function Shell({ route, children }) {
       </nav>
       <div class="nav-right">
         ${liveAcross(store.doc).length > 0 && html`<a class="btn sm live-pill" href="#/ao-vivo" title="Partidas em andamento"><i></i>AO VIVO</a>`}
+        <${Bell} />
         <a class="btn sm tv-link" href="#/telao" target="_blank" rel="noopener">Telão</a>
         <a class=${'btn sm ' + (sports.user ? '' : 'primary')} href="#/conta">${sports.user ? (sports.profile?.nick || 'Minha conta') : 'Entrar'}</a>
         <a class=${"btn sm adm-btn " + (store.admin ? "on" : "")} href="#/admin" title=${store.admin ? "Painel do administrador" : "Entrar como administrador"}>${store.admin ? html`<span class="hide-sm">Painel </span>ADM` : "ADM"}</a>
@@ -74,6 +78,7 @@ function App() {
   switch (page) {
     case 'campeonatos': screen = html`<${EventsPage} />`; break;
     case 'ao-vivo': screen = html`<${LivePage} />`; break;
+    case 'agenda': screen = html`<${AgendaPage} />`; break;
     case 'jogadores': screen = html`<${PlayersPage} />`; break;
     case 'avatar': screen = html`<${EditorPage} key=${arg} id=${arg} />`; break;
     case 'sorteio': screen = html`<${DrawPage} />`; break;
