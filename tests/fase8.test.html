@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Testes da fase 8</title>
+<style>body{font:14px/1.5 system-ui;background:#0a0d14;color:#d0ddef;padding:24px;max-width:960px;margin:auto}h1{font-size:20px}.ok{color:#5fd38d}.ko{color:#ff7b7b;font-weight:700}li{list-style:none}#sum{font-size:18px;font-weight:700;margin:12px 0}</style></head>
+<body><h1>Agenda, notificações, comunidade e regulamentos</h1><div id="sum"></div><ul id="out"></ul>
+<script type="module">
+// Regras de supabase/fase8.sql, pelo banco simulado (tests/fase8-mock.js).
+import { createMockSportsDb } from './sports-mock.js';
+const out = document.getElementById('out');
+let pass = 0, failed = 0;
+const failures = [];
+async function test(name, fn) {
+  try { await fn(); pass++; out.insertAdjacentHTML('beforeend', `<li class="ok">✓ ${name}</li>`); }
+  catch (e) { failed++; failures.push(name + ': ' + e.message); out.insertAdjacentHTML('beforeend', `<li class="ko">✗ ${name} — ${e.message}</li>`); }
+}
+const eq = (a, b, m = '') => { const x = JSON.stringify(a), y = JSON.stringify(b); if (x !== y) throw new Error(`${m} esperado ${y}, veio ${x}`); };
+const ok = (v, m = 'falso') => { if (!v) throw new Error(m); };
+const rejects = async (p, re) => { try { await p; } catch (e) { if (re && !re.test(e.message)) throw new Error('mensagem: ' + e.message); return e; } throw new Error('deveria falhar'); };
+
+const db = createMockSportsDb();
+let clock = Date.parse('2026-11-10T12:00:00Z');
+db.now = () => clock;
+const ids = {};
+async function account(key, name, gender, approve = true) {
+  await db.signUp(key + '@x.com', 'segredo1');
+  await db.saveProfile({ name, gender });
+  ids[key] = db.current.id;
+  if (approve) { await db.adminSetStatus('tok', ids[key], 'approved'); db.asUser(); }
+}
+const as = async (key) => { await db.signIn(key + '@x.com', 'segredo1'); db.asUser(); };
+const iso = (days, h = 19) => new Date(clock + days * 864e5).toISOString().slice(0, 11) + String(h).padStart(2, '0') + ':00:00.000Z';
+await account('ana', 'Ana Souza', 'f'); await account('bia', 'Bia Lima', 'f'); await account('caio', 'Caio Reis', 'm'); await account('novo', 'Novo', 'm', false);
+
+// ---------------------------------------------------------------- agenda
+await test('ADM agenda e avisa os participantes uma vez só', async () => {
+  const { id } = await db.agendaAdminSave('tok', { title: 'Semifinal ping pong', starts_at: iso(2), location: 'Copa', participants: [ids.ana, ids.caio], modality: 'pingpong', kind: 'partida' });
+  await as('ana');
+  let n = await db.notifications();
+  eq(n.length, 1); ok(/Agendado: Semifinal/.test(n[0].title)); ok(/às 16:00/.test(n[0].body), n[0].body);
+  await db.agendaAdminSave('tok', { id, title: 'Semifinal ping pong', starts_at: iso(2), location: 'Copa', participants: [ids.ana, ids.caio], modality: 'pingpong', kind: 'partida' });
+  await as('ana'); n = await db.notifications();
+  eq(n.length, 1, 'salvar de novo sem mudar a data não duplica');
+  await db.agendaAdminSave('tok', { id, title: 'Semifinal ping pong', starts_at: iso(3), participants: [ids.ana, ids.caio], kind: 'partida' });
+  await as('ana'); eq((await db.notifications()).length, 2, 'nova data avisa de novo');
+  await as('bia'); eq((await db.notifications()).length, 0, 'quem não está não recebe');
+});
+
+await test('ADM: participantes precisam de conta aprovada; título e data obrigatórios', async () => {
+  await rejects(db.agendaAdminSave('tok', { title: 'X', starts_at: iso(1), participants: [ids.novo] }), /aprovada/);
+  await rejects(db.agendaAdminSave('tok', { title: '', starts_at: iso(1) }), /título/);
+  await rejects(db.agendaAdminSave('tok', { title: 'X' }), /data/);
+  await rejects(db.agendaAdminSave('errado', { title: 'X', starts_at: iso(1) }), /administrador/);
+});
+
+await test('Participante confirma presença; quem não foi chamado não', async () => {
+  await db.agendaAdminSave('tok', { title: 'Treino', starts_at: iso(1), participants: [ids.bia] });
+  await as('bia');
+  const a = (await db.agenda()).find((x) => x.title === 'Treino');
+  await db.agendaRsvp(a.id, 'sim'); await db.agendaRsvp(a.id, 'nao');
+  eq((await db.rsvps()).filter((r) => r.agenda_id === a.id).map((r) => r.answer), ['nao'], 'troca a resposta, sem duplicar');
+  await as('caio');
+  await rejects(db.agendaRsvp(a.id, 'sim'), /Só quem foi chamado/);
+});
+
+await test('Amistoso proposto: convite, visível só para os dois, aceite e aviso de volta', async () => {
+  await as('ana');
+  const { id } = await db.agendaPropose({ modality: 'pingpong', opponent: ids.bia, startsAt: iso(4), location: 'Mesa 2' });
+  await as('caio'); ok(!(await db.agenda()).some((a) => a.id === id), 'convite pendente é privado');
+  await as('bia');
+  const n = (await db.notifications()).find((x) => x.kind === 'convite');
+  ok(n && /Ana Souza chamou você para um amistoso de Ping Pong/.test(n.title), n?.title);
+  await rejects((async () => { await as('ana'); return db.agendaAnswer(id, true); })(), /Convite não encontrado/);
+  await as('bia'); await db.agendaAnswer(id, true);
+  await as('caio'); ok((await db.agenda()).some((a) => a.id === id && a.status === 'confirmed'), 'confirmado fica público');
+  await as('ana'); ok((await db.notifications()).some((x) => /Bia Lima aceitou/.test(x.title)));
+  await as('bia'); await rejects(db.agendaAnswer(id, false), /já respondido/);
+});
+
+await test('Amistoso: regras de data, adversário e repetição', async () => {
+  await as('ana');
+  await rejects(db.agendaPropose({ modality: 'pingpong', opponent: ids.ana, startsAt: iso(2) }), /adversário/);
+  await rejects(db.agendaPropose({ modality: 'pingpong', opponent: ids.novo, startsAt: iso(2) }), /adversário/);
+  await rejects(db.agendaPropose({ modality: 'pingpong', opponent: ids.bia, startsAt: iso(-1) }), /90 dias/);
+  await rejects(db.agendaPropose({ modality: 'pingpong', opponent: ids.bia, startsAt: iso(120) }), /90 dias/);
+  await rejects(db.agendaPropose({ modality: 'xadrez', opponent: ids.bia, startsAt: iso(2) }), /Modalidade/);
+  await db.agendaPropose({ modality: 'eafc', opponent: ids.caio, startsAt: iso(5) });
+  await rejects(db.agendaPropose({ modality: 'eafc', opponent: ids.caio, startsAt: iso(5) }), /já foi enviado/);
+  await as('novo'); await rejects(db.agendaPropose({ modality: 'eafc', opponent: ids.caio, startsAt: iso(5) }), /aguarda aprovação/);
+});
+
+await test('Quem propôs cancela e o outro é avisado; recusa também avisa', async () => {
+  await as('caio');
+  const { id } = await db.agendaPropose({ modality: 'mk', opponent: ids.ana, startsAt: iso(6) });
+  await as('ana'); await db.agendaAnswer(id, false);
+  await as('caio'); ok((await db.notifications()).some((x) => /recusou/.test(x.title)));
+  const { id: id2 } = await db.agendaPropose({ modality: 'mk', opponent: ids.bia, startsAt: iso(7) });
+  await as('bia'); await rejects(db.agendaCancelMine(id2), /Só quem propôs/);
+  await as('caio'); await db.agendaCancelMine(id2);
+  await as('bia'); ok((await db.notifications()).some((x) => x.dedupe === 'agenda-cancel:' + id2));
+});
+
+await test('ADM cancela e avisa; notificações marcadas como lidas', async () => {
+  const { id } = await db.agendaAdminSave('tok', { title: 'Final', starts_at: iso(8), participants: [ids.caio] });
+  await db.agendaAdminCancel('tok', id);
+  await rejects(db.agendaAdminCancel('tok', id), /já cancelado/);
+  await as('caio');
+  const unread = (await db.notifications()).filter((x) => !x.read_at);
+  ok(unread.some((x) => /Cancelado: Final/.test(x.title)));
+  await db.notificationsRead([unread[0].id]);
+  eq((await db.notifications()).filter((x) => !x.read_at).length, unread.length - 1);
+  await db.notificationsRead(null);
+  eq((await db.notifications()).filter((x) => !x.read_at).length, 0);
+});
+
+// ---------------------------------------------------------------- comunidade
+const T = 'match:ev1:m:m0-0';
+await test('Comentário: só conta aprovada; visitante e pendente não comentam', async () => {
+  await db.signOut();
+  await rejects(db.comment(T, 'oi'), /Entre na sua conta/);
+  await as('novo'); await rejects(db.comment(T, 'oi'), /aguarda aprovação/);
+  await as('ana'); await db.comment(T, '  Que jogo!  ');
+  eq((await db.comments(T)).map((c) => c.body), ['Que jogo!']);
+  await rejects(db.comment(T, '   '), /Escreva/);
+  await rejects(db.comment('nada', 'x'), /Destino/);
+});
+
+await test('Limite: 5 segundos entre comentários e 30 por hora', async () => {
+  await as('bia');
+  await db.comment(T, 'primeiro');
+  await rejects(db.comment(T, 'rápido demais'), /Espere/);
+  for (let i = 0; i < 29; i++) { clock += 6000; await db.comment(T, 'msg ' + i); }
+  clock += 6000;
+  await rejects(db.comment(T, 'trigésimo primeiro'), /30 comentários/);
+  clock += 3600e3;
+});
+
+await test('Resposta fica em um nível e avisa o autor', async () => {
+  await as('ana');
+  const root = (await db.comments(T)).find((c) => c.body === 'Que jogo!');
+  await as('caio'); const { id } = await db.comment(T, 'Demais!', root.id);
+  clock += 6000;
+  await as('bia'); const { id: id2 } = await db.comment(T, 'Concordo', id);
+  const r2 = (await db.comments(T)).find((c) => c.id === id2);
+  eq(r2.parent_id, root.id, 'resposta de resposta vai para o comentário original');
+  await as('ana'); ok((await db.notifications()).some((x) => /Caio Reis respondeu/.test(x.title)));
+});
+
+await test('Reações: liga e desliga; só conta aprovada', async () => {
+  await as('ana'); await db.react(T, 'fogo'); await db.react(T, 'trofeu'); await db.react(T, 'fogo');
+  eq((await db.reactions(T)).filter((r) => r.user_id === ids.ana).map((r) => r.emoji), ['trofeu']);
+  await rejects(db.react(T, 'cocô'), /inválida/);
+  await as('novo'); await rejects(db.react(T, 'fogo'), /aguarda aprovação/);
+});
+
+await test('Denúncia → ADM oculta; autor ainda vê o próprio; outros não', async () => {
+  await as('caio'); const { id } = await db.comment(T, 'comentário ofensivo');
+  await as('ana'); await db.reportComment(id, 'ofensivo'); await db.reportComment(id, 'ofensivo mesmo');
+  await as('bia'); await db.reportComment(id, null);
+  let rep = await db.adminReports('tok');
+  const r = rep.find((x) => x.id === id);
+  eq(r.reports, 2, 'cada conta denuncia uma vez'); ok(/ofensivo mesmo/.test(r.reasons));
+  await db.adminComment('tok', id, 'hide');
+  await as('bia'); ok(!(await db.comments(T)).some((c) => c.id === id), 'oculto para os outros');
+  await as('caio'); ok((await db.comments(T)).some((c) => c.id === id && c.hidden), 'autor vê o próprio, marcado');
+  rep = await db.adminReports('tok');
+  eq(rep.find((x) => x.id === id).reports, 0, 'denúncias resolvidas'); ok(rep.find((x) => x.id === id).hidden);
+  await db.adminComment('tok', id, 'show');
+  await as('bia'); ok((await db.comments(T)).some((c) => c.id === id));
+  await db.adminComment('tok', id, 'delete');
+  ok(!(await db.comments(T)).some((c) => c.id === id));
+});
+
+await test('ADM silencia: a pessoa não comenta até liberar', async () => {
+  await db.adminMute('tok', ids.caio, true);
+  clock += 6000;
+  await as('caio'); await rejects(db.comment(T, 'oi'), /suspendeu/);
+  await db.adminMute('tok', ids.caio, false);
+  await as('caio'); await db.comment(T, 'voltei');
+  await rejects(db.adminMute('x', ids.caio, true), /administrador/);
+});
+
+await test('Só quem escreveu apaga o próprio comentário', async () => {
+  clock += 6000;
+  await as('ana'); const { id } = await db.comment(T, 'vou apagar');
+  await as('bia'); await rejects(db.commentDelete(id), /Só quem escreveu/);
+  await as('ana'); await db.commentDelete(id);
+  ok(!(await db.comments(T)).some((c) => c.id === id));
+});
+
+// ---------------------------------------------------------------- regulamentos
+await test('Regulamento: rascunho → publicar; versões anteriores ficam; publicado não muda', async () => {
+  const a = await db.adminRegulationSave('tok', { modality: 'pingpong', title: 'Ping Pong', official: 'v1', internal: 'i1' });
+  await db.adminRegulationSave('tok', { modality: 'pingpong', title: 'Ping Pong', official: 'v1 corrigido', internal: 'i1' });
+  eq((await db.adminRegulations('tok', 'pingpong')).length, 1, 'rascunho editado, não duplicado');
+  eq((await db.regulations()).length, 0, 'rascunho não aparece para participantes');
+  await db.adminRegulationPublish('tok', a.id);
+  const b = await db.adminRegulationSave('tok', { modality: 'pingpong', title: 'Ping Pong', official: 'v2', internal: 'i2' });
+  ok(b.id !== a.id, 'depois de publicar, salvar cria a versão 2');
+  await db.adminRegulationPublish('tok', b.id);
+  const pub = await db.regulations();
+  eq(pub.map((r) => [r.version, r.official]), [[2, 'v2'], [1, 'v1 corrigido']]);
+  await rejects(db.adminRegulationPublish('tok', a.id), /Rascunho não encontrado/);
+  await rejects(db.adminRegulationSave('tok', { modality: 'Ping Pong!', title: 'x' }), /Modalidade/);
+  await rejects(db.adminRegulations('x', 'pingpong'), /administrador/);
+});
+
+document.getElementById('sum').textContent = `${pass} passaram · ${failed} falharam`;
+document.title = `${pass} ok / ${failed} falhas`;
+window.__failures = failures;
+</script></body></html>

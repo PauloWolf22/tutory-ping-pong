@@ -55,7 +55,7 @@ function CategoryPodium({ c }) {
 function EventCard({ event, comps, current }) {
   const cats = Object.keys(comps);
   const first = comps[cats[0]];
-  const date = first.regulation?.date ? first.regulation.date.split('-').reverse().join('/') : current ? '' : fmtDate(event.archivedAt).split(' ')[0];
+  const date = first.regulation?.date ? first.regulation.date.split('-').reverse().join('/') : current ? '' : fmtDate(event.archivedAt).split(',')[0];
   const results = cats.reduce((n, c) => n + E.realMatches(comps[c]).filter(E.isFinished).length, 0);
   return html`<article class=${'glass hc-event' + (current ? ' current' : '')}>
     <span class="overline">${current ? 'Evento atual' : 'Encerrado'}</span>

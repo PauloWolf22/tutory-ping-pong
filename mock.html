@@ -25,6 +25,18 @@
     };
     globalThis.__tutoryTestCloud = db;
     window.__db = db;
+    // contas, agenda, comentários e regulamentos também simulados (tests/sports-mock.js + tests/fase8-mock.js)
+    const { createMockSportsDb } = await import('./tests/sports-mock.js');
+    const sdb = createMockSportsDb();
+    for (const [k, name, g] of [['bia', 'Bia Lima', 'f'], ['caio', 'Caio Reis', 'm'], ['ana', 'Ana Souza', 'f']]) {
+      await sdb.signUp(k + '@x.com', 'segredo1'); await sdb.saveProfile({ name, gender: g });
+      await sdb.adminSetStatus('tok', sdb.current.id, 'approved'); sdb.asUser();
+    }
+    const r1 = await sdb.adminRegulationSave('tok', { modality: 'pingpong', title: 'Ping Pong (tênis de mesa)', official: '• Game até 11, com 2 de diferença.\n• Saque troca a cada 2 pontos.', internal: '• Melhor de 3 por padrão.', sources: 'ITTF Handbook' });
+    await sdb.adminRegulationPublish('tok', r1.id); sdb.asUser();
+    window.__sdb = sdb;
+    const { sports } = await import('./js/core/sports.js');
+    await sports.init(sdb);
     await import('./js/main.js');
     const { store } = await import('./js/ui/lib.js');
     window.__store = store;

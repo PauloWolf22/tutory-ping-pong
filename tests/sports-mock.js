@@ -1,6 +1,7 @@
 // Banco simulado do Tutory Sports, com as mesmas regras de supabase/sports.sql.
 // Usado pelos testes e pela tela de demonstração: nada vai para o Supabase.
 import { UserError } from '../js/core/engine.js';
+import { addFase8 } from './fase8-mock.js';
 
 const err = (m, status = 400) => { throw Object.assign(new UserError(m), { status }); };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -305,5 +306,5 @@ export function createMockSportsDb({ adminToken = 'tok' } = {}) {
     },
     listen(fn) { this.listener = fn; },
   };
-  return db;
+  return addFase8(db);
 }

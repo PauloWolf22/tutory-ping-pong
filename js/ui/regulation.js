@@ -1,5 +1,6 @@
 import { html, useState, useDoc, store, act, fmtDate } from './lib.js';
 import * as E from '../core/engine.js';
+import { ModalityRules, RULE_TABS } from './rules.js';
 
 const FIELDS = E.REGULATION_FIELDS;
 const LONG = new Set(['scoringText', 'tiebreak', 'wo', 'conduct', 'prizes', 'notes']);
@@ -42,6 +43,17 @@ function Editor({ t, close }) {
 export function RegulationPage() {
   const t = useDoc();
   const [editing, setEditing] = useState(false);
+  // abas: o campeonato atual e o regulamento de cada modalidade (versões no banco)
+  const [tab, setTab] = useState(() => new URLSearchParams(location.hash.split('?')[1] || '').get('m') || 'evento');
+  const tabs = html`<div class="seg reg-tabs" role="tablist" aria-label="Regulamentos">
+    ${[['evento', 'Campeonato atual'], ...RULE_TABS].map(([k, l]) => html`<button key=${k} role="tab" aria-selected=${tab === k} class=${tab === k ? 'on' : ''} onClick=${() => { setTab(k); setEditing(false); }}>${l}</button>`)}
+  </div>`;
+  if (tab !== 'evento') {
+    return html`<main class="page reg-page">
+      <div class="page-head"><div><span class="overline">Regulamentos</span><h1>As regras do <em>jogo</em></h1><p>Regras oficiais e adaptações da Tutory, por modalidade.</p></div></div>
+      ${tabs}<${ModalityRules} key=${tab} modality=${tab} />
+    </main>`;
+  }
   const reg = t.regulation;
   const value = (k) => (k === 'scoringText' ? reg.scoringText || E.scoringDescription(t.scoring) : reg[k]);
   const filled = SECTIONS.map(([title, keys]) => [title, keys.filter((k) => value(k))]).filter(([, keys]) => keys.length);
@@ -51,6 +63,7 @@ export function RegulationPage() {
       <div><span class="overline">Regulamento</span><h1>As regras do <em>jogo</em></h1><p>${t.meta.name} · ${t.meta.edition}</p></div>
       ${store.admin && !editing && html`<button class="btn primary" onClick=${() => setEditing(true)}>Editar regulamento</button>`}
     </div>
+    ${tabs}
     ${editing ? html`<${Editor} t=${t} close=${() => setEditing(false)} />` : html`
       <div class="reg-doc">
         ${filled.map(([title, keys]) => html`<section key=${title} class="glass card">

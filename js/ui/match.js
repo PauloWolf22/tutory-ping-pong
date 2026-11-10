@@ -2,6 +2,7 @@ import { html, useState, useEffect, useRef, useDoc, store, act, Ava, avatarOf, p
 import * as E from '../core/engine.js';
 import { TableStage } from '../three/stage.js';
 import { sfx } from './sfx.js';
+import { Comments } from './community.js';
 
 const rowLabel = (t, m) => (m.bye ? 'BYE' : `Jogo ${m.number}`);
 
@@ -259,6 +260,7 @@ export function MatchPage({ id }) {
       </div>`}
       ${!admin && finished && !m.bye && html`<p class="muted" style="text-align:center;margin-top:18px">Encerrada em ${fmtDate(m.endedAt)}.</p>`}
       <${PointLog} t=${t} m=${m} />
+      ${!m.bye && html`<${Comments} target=${`match:${t.event.id}:${t.cat}:${m.id}`} title="Comentários da partida" />`}
     </div>
   </main>`;
 }
