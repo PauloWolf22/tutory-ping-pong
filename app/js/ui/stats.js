@@ -1,4 +1,5 @@
-import { html, useDoc, Ava, displayName, playerById } from './lib.js';
+import { html, useState, useDoc, Ava, displayName, playerById } from './lib.js';
+import { PersonStatsView, CompareView } from './people-stats.js';
 import * as E from '../core/engine.js';
 
 const Tile = ({ label, value, sub }) => html`<div class="glass tile"><span>${label}</span><b>${value}</b>${sub && html`<small>${sub}</small>`}</div>`;
@@ -9,11 +10,21 @@ const Leader = ({ label, row, value, gold }) => html`<div class="glass leader">
 
 export function StatsPage() {
   const t = useDoc();
+  // abas: o campeonato atual (motor), cada pessoa por modalidade e a comparação entre duas (resultados aprovados)
+  const [tab, setTab] = useState(() => new URLSearchParams(location.hash.split('?')[1] || '').get('aba') || 'campeonato');
+  const tabs = html`<div class="seg reg-tabs" role="tablist" aria-label="Estatísticas">${[['campeonato', 'Campeonato atual'], ['pessoa', 'Por pessoa'], ['comparar', 'Comparar']].map(([k, l]) => html`<button key=${k} role="tab" aria-selected=${tab === k} class=${tab === k ? 'on' : ''} onClick=${() => setTab(k)}>${l}</button>`)}</div>`;
+  if (tab !== 'campeonato') {
+    return html`<main class="page">
+      <div class="page-head"><div><span class="overline">Resultados aprovados de todas as modalidades</span><h1>Números de <em>cada um</em></h1></div></div>
+      ${tabs}${tab === 'pessoa' ? html`<${PersonStatsView} />` : html`<${CompareView} />`}
+    </main>`;
+  }
   const s = E.computeStats(t);
   const big = s.biggestMargin;
   const bigPlayer = big && playerById(t, big.match.winner);
   return html`<main class="page">
     <div class="page-head"><div><span class="overline">Calculado a partir dos resultados registrados</span><h1>Números do <em>campeonato</em></h1></div></div>
+    ${tabs}
     <div class="tiles">
       <${Tile} label="Participantes" value=${s.totalPlayers} />
       <${Tile} label="Partidas" value=${s.totalMatches} />

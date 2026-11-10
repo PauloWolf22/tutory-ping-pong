@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Testes de estatísticas</title>
+<style>body{font:14px/1.5 system-ui;background:#0a0d14;color:#d0ddef;padding:24px;max-width:960px;margin:auto}h1{font-size:20px}.ok{color:#5fd38d}.ko{color:#ff7b7b;font-weight:700}li{list-style:none}#sum{font-size:18px;font-weight:700;margin:12px 0}</style></head>
+<body><h1>Estatísticas por modalidade e comparação</h1><div id="sum"></div><ul id="out"></ul>
+<script type="module">
+import * as S from '../js/core/stats.js';
+const out = document.getElementById('out');
+let pass = 0, failed = 0;
+const failures = [];
+function test(name, fn) {
+  try { fn(); pass++; out.insertAdjacentHTML('beforeend', `<li class="ok">✓ ${name}</li>`); }
+  catch (e) { failed++; failures.push(name + ': ' + e.message); out.insertAdjacentHTML('beforeend', `<li class="ko">✗ ${name} — ${e.message}</li>`); }
+}
+const eq = (a, b, m = '') => { const x = JSON.stringify(a), y = JSON.stringify(b); if (x !== y) throw new Error(`${m} esperado ${y}, veio ${x}`); };
+let n = 0;
+const R = (o) => ({ id: 'r' + ++n, status: 'approved', kind: 'amistoso', played_on: `2026-11-${String(n).padStart(2, '0')}`, ...o });
+const results = [
+  R({ modality: 'pingpong', p1: 'ana', p2: 'bia', winner: 'ana', score: '2 x 1' }),
+  R({ modality: 'pingpong', p1: 'bia', p2: 'ana', winner: 'bia', score: '2 x 0', kind: 'campeonato' }),
+  R({ modality: 'pingpong', p1: 'ana', p2: 'caio', winner: 'ana', score: 'WO' }),
+  R({ modality: 'jiujitsu', p1: 'ana', p2: 'bia', winner: 'ana', score: '4 x 2', method: 'Pontos' }),
+  R({ modality: 'jiujitsu', p1: 'caio', p2: 'ana', winner: 'ana', score: '0 x 0', method: 'Finalização' }),
+  R({ modality: 'cs', p1: 'ana', p2: 'caio', team1: ['ana', 'bia'], team2: ['caio', 'davi'], winner: 'caio', score: '9 x 13' }),
+  R({ modality: 'pingpong', p1: 'ana', p2: 'bia', winner: 'ana', score: '2 x 0', status: 'pending' }),
+  R({ modality: 'eafc', p1: 'bia', p2: 'caio', winner: 'bia', score: '3 x 1' }),
+];
+const awards = [
+  { user_id: 'ana', modality: 'pingpong', place: 'campeao' }, { user_id: 'ana', modality: 'pingpong', place: 'participacao' },
+  { user_id: 'bia', modality: 'pingpong', place: 'vice' }, { user_id: 'ana', modality: 'jiujitsu', place: 'terceiro' },
+];
+
+test('Ping pong: jogos, vitórias, aproveitamento, placar do ponto de vista da pessoa e WO', () => {
+  const s = S.personStats(results, awards, 'ana').byModality.pingpong;
+  eq([s.played, s.wins, s.losses, s.wo], [3, 2, 1, 1]);
+  eq([s.scoreFor, s.scoreAgainst, s.scored], [2, 3, 2], 'sets: 2x1 a favor e 0x2 contra (WO fica de fora)');
+  eq(s.winRate, 66.7);
+  eq([s.friendly, s.championship], [{ w: 2, l: 0 }, { w: 0, l: 1 }]);
+  eq(s.podiums, { campeao: 1, vice: 0, terceiro: 0 }); eq(s.participations, 1);
+});
+test('Resultado pendente não entra', () => {
+  eq(S.personStats(results, awards, 'ana').byModality.pingpong.played, 3);
+});
+test('Jiu-jitsu: vitória por método e pódio', () => {
+  const s = S.personStats(results, awards, 'ana').byModality.jiujitsu;
+  eq(s.methodsWon, { Finalização: 1, Pontos: 1 }); eq(s.podiums.terceiro, 1); eq(s.winRate, 100);
+});
+test('Counter-Strike: conta para todos do time, com quem jogou junto', () => {
+  const a = S.personStats(results, awards, 'ana').byModality.cs, b = S.personStats(results, awards, 'bia').byModality.cs;
+  const d = S.personStats(results, awards, 'davi').byModality.cs;
+  eq([a.losses, b.losses, d.wins], [1, 1, 1]); eq(a.teammates, { bia: 1 }); eq([d.scoreFor, d.scoreAgainst], [13, 9]);
+});
+test('Totais e quem não jogou', () => {
+  const s = S.personStats(results, awards, 'ana');
+  eq([s.played, s.wins, s.losses, s.winRate], [6, 4, 2, 66.7]);
+  eq(S.personStats(results, awards, 'zé').played, 0);
+});
+test('Confronto direto: só lados opostos, em todas as modalidades', () => {
+  const h = S.headToHead(results, 'ana', 'bia');
+  eq([h.played, h.a, h.b], [3, 2, 1], 'CS com as duas no mesmo time não conta');
+});
+test('Comparação usa aproveitamento (%), sem somar unidades diferentes', () => {
+  const mods = [{ id: 'pingpong', name: 'Ping Pong' }, { id: 'jiujitsu', name: 'Jiu-Jitsu' }, { id: 'eafc', name: 'EA FC' }, { id: 'cs', name: 'CS' }];
+  const c = S.compare(S.personStats(results, awards, 'ana'), S.personStats(results, awards, 'bia'), mods);
+  eq(c.map((x) => [x.modality, x.a, x.b]), [['pingpong', 66.7, 50], ['jiujitsu', 100, 0], ['eafc', null, 100], ['cs', 0, 0]]);
+});
+
+document.getElementById('sum').textContent = `${pass} passaram · ${failed} falharam`;
+document.title = `${pass} ok / ${failed} falhas`;
+window.__failures = failures;
+</script></body></html>

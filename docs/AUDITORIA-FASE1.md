@@ -303,3 +303,46 @@ Tudo em `supabase/sports.sql`, que pode ser rodado de novo sem perder dados. **R
   - A logo continua intacta.
 - **Testado:** computador (1280 px) e celular (375 px, sem rolagem lateral), com um evento encerrado no histórico. A regressão continua com 192 testes, todos aprovados.
 - **Fica para a fase 8:** regulamentos por modalidade, com versões.
+
+## Fase 8: agenda, notificações, regulamentos, estatísticas e comunidade (09–10/11/2026)
+- **Regras decididas pelo Paulo:**
+  - Comentários só de contas aprovadas, com denúncia e moderação.
+  - Notificações na central do site, mais o aviso do navegador (com permissão e com o site aberto).
+  - Agenda: o ADM marca, e as contas aprovadas também propõem amistosos.
+- **Banco:** `supabase/fase8.sql`, que o Paulo precisa rodar uma vez. Tudo é escrito por funções; as tabelas são só leitura, com RLS.
+- **Agenda:**
+  - O ADM marca eventos e partidas com participantes, e cada um é avisado.
+  - Mudou a data, avisa de novo; salvar de novo sem mudar nada não duplica o aviso.
+  - Participantes confirmam presença.
+  - Amistoso proposto: o convite é privado até o adversário aceitar. A recusa e o cancelamento também avisam.
+  - A data do evento atual do campeonato aparece na agenda.
+- **Notificações:**
+  - Sino no topo, com contador.
+  - Lista: "sua partida é a próxima/está em quadra" (vem do campeonato, para quem está ligado à conta), os próximos 7 dias e o histórico.
+  - Marcar como lida.
+  - Aviso do navegador só com permissão.
+- **Comunidade:**
+  - Comentários na partida, com um nível de respostas (quem é respondido recebe aviso) e 5 reações.
+  - Limites: 5 s entre comentários e 30 por hora.
+  - Denúncia, uma por conta.
+  - Em Aprovações, o ADM oculta, mostra, apaga, mantém ou silencia a pessoa.
+- **Regulamentos por modalidade:**
+  - Abas em Regras: Ping Pong, Jiu-Jitsu, Futebol, Tutory Gaming e Counter-Strike.
+  - "Regras oficiais" (ITTF, IBJJF, Valve, com fonte) ficam separadas de "Adaptações Tutory".
+  - Rascunho, publicar e versões anteriores consultáveis. Uma versão publicada nunca muda.
+  - Futebol e Gaming são só regra interna, e a tela avisa isso.
+  - A regra de empate do futebol consta como "a definir pelo ADM", porque ainda não existe.
+- **Estatísticas** (`core/stats.js`):
+  - **Por pessoa**, em cada modalidade:
+    - jogos, vitórias, derrotas, aproveitamento, placar a favor e contra (na unidade da modalidade), amistosos e campeonatos, WO e pódios;
+    - jiu-jitsu: vitórias por método e faixa validada;
+    - Counter-Strike: com quem jogou junto.
+  - **Comparar:** duas pessoas, com confronto direto, gráfico de aproveitamento por modalidade, tabela e nota geral do ranking.
+    - Cores azul e dourado validadas pelo script do guia de visualização (fundo escuro, daltonismo, contraste).
+    - Entre modalidades, só porcentagem: unidades diferentes nunca são somadas.
+  - O futebol continua com as estatísticas próprias (a lista dele é por nome, não por conta).
+- **Menu do topo:** Sorteio e Chave saíram (continuam na Central, em Campeonatos e no painel), e Regulamento virou "Regras", para caber em 1280 px com o sino.
+- **Testes:**
+  - Novos: `tests/fase8.test.html` (15, regras do SQL pelo banco simulado `tests/fase8-mock.js`) e `tests/stats.test.html` (7).
+  - Total: 214, todos aprovados.
+  - Fluxos feitos na tela em `mock.html` (que agora também simula as contas), no computador e em 375 px.
