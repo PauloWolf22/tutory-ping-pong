@@ -182,6 +182,10 @@ export function addFase8(db) {
     },
     async adminMute(t, user, mute) { this.isAdmin(t); const p = this._p.get(user); if (p) p.muted = !!mute; this.bump(); return { ok: true }; },
 
+    // ------------------------------------------------ estatísticas (mesmo filtro de resultsOf/awardsOf do Supabase)
+    async resultsOf(uid) { return this._r.filter((r) => r.status === 'approved' && (r.p1 === uid || r.p2 === uid || r.team1?.includes(uid) || r.team2?.includes(uid))).map((r) => structuredClone(r)); },
+    async awardsOf(uid) { return this._a.filter((a) => a.user_id === uid).map((a) => ({ ...a })); },
+
     // ------------------------------------------------ regulamentos
     async regulations() { return this._reg.filter((r) => r.status === 'published').sort((a, b) => b.version - a.version).map((r) => ({ ...r })); },
     async adminRegulations(t, modality) { this.isAdmin(t); return this._reg.filter((r) => r.modality === modality).sort((a, b) => b.version - a.version).map((r) => ({ ...r })); },

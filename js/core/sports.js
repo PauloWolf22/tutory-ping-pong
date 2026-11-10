@@ -113,6 +113,10 @@ export async function createSportsDb({ url, anonKey }) {
     adminReports: (token) => rpc('sp_admin_reports', { p_token: token }),
     adminComment: (token, id, action) => rpc('sp_admin_comment', { p_token: token, p_id: id, p_action: action }),
     adminMute: (token, user, mute) => rpc('sp_admin_mute', { p_token: token, p_user: user, p_mute: mute }),
+    // estatísticas (core/stats.js): resultados aprovados e colocações de uma pessoa
+    resultsOf: (uid) => guard(() => client.from('results').select('*').eq('status', 'approved')
+      .or(`p1.eq.${uid},p2.eq.${uid},team1.cs.{${uid}},team2.cs.{${uid}}`).order('played_on', { ascending: false }).limit(1000)),
+    awardsOf: (uid) => guard(() => client.from('awards').select('*').eq('user_id', uid)),
     regulations: () => guard(() => client.from('regulations').select('*').order('version', { ascending: false })),
     adminRegulations: (token, modality) => rpc('sp_admin_regulations', { p_token: token, p_modality: modality }),
     adminRegulationSave: (token, r) => rpc('sp_admin_regulation_save', { p_token: token, p_r: r }),
